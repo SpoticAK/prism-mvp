@@ -11,43 +11,28 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- State Management ---
-if 'processed_data' not in st.session_state:
-    st.session_state.processed_data = None
-
 # --- Data Cleaning & Processing ---
 def clean_sales_value(sale_entry):
     """
     A robust function to clean a single sales data entry.
-    Handles formats like '500+', '3K+', '1,939', and empty values.
+    Handles formats like '500+', '3K+', '1,939', and empty/non-string values.
     """
-    # If the entry is missing or not a string, treat as 0
     if pd.isna(sale_entry) or not isinstance(sale_entry, str):
         return 0
     
-    # Standardize the string
-    s = str(sale_entry).lower().strip()
-    
-    # Isolate the first part of the string (e.g., "500+" from "500+ bought...")
-    s = s.split(' ')[0]
-
-    # Remove commas and '+' signs
+    s = str(sale_entry).lower().strip().split(' ')[0]
     s = s.replace(',', '').replace('+', '')
     
     value = 0
     try:
-        # Handle 'k' for thousands
         if 'k' in s:
-            s = s.replace('k', '')
-            value = float(s) * 1000
+            value = float(s.replace('k', '')) * 1000
         else:
-            # Handle regular numbers
             numeric_part = re.sub(r'[^\d.]', '', s)
             if numeric_part:
                 value = float(numeric_part)
     except (ValueError, TypeError):
-        # If any conversion fails, default to 0
-        return 0
+        return 0 # Default to 0 if any conversion fails
             
     return int(value)
 
@@ -60,17 +45,10 @@ def load_and_process_data():
     url = f"https://raw.githubusercontent.com/{github_user}/{repo_name}/main/{file_path}"
     
     df = pd.read_csv(url)
-    
-    # Apply the robust cleaning function to the 'Monthly Sales' column
     df['Cleaned Sales'] = df['Monthly Sales'].apply(clean_sales_value)
     
-    # Initialize and run the Item Identifier
     identifier = ItemIdentifier()
     df['Identified Item'] = df['Title'].apply(identifier.identify)
-    
-    # Add feedback columns for the UI
-    df['Correct?'] = pd.Series([None]*len(df), dtype='boolean')
-    df['Corrected Label'] = pd.Series([""]*len(df), dtype='str')
     
     return df
 
@@ -78,14 +56,9 @@ def load_and_process_data():
 st.title("PRISM: Product Intelligence & Sales Monitoring")
 
 try:
-    # Load and process data once and store in session state
-    if st.session_state.processed_data is None:
-        with st.spinner("Loading and analyzing data from your repository..."):
-            st.session_state.processed_data = load_and_process_data()
+    with st.spinner("Loading and analyzing data from your repository..."):
+        df = load_and_process_data()
 
-    df = st.session_state.processed_data
-
-    # --- Main Dashboard Display ---
     st.success("Dashboard generated from `products.csv` in your repository.")
 
     # --- Key Metrics ---
@@ -111,17 +84,9 @@ try:
     
     st.markdown("---")
 
-    # --- Feedback Section ---
-    st.subheader("Review and Correct Identifications")
-    st.data_editor(
-        df[['Title', 'Identified Item', 'Correct?', 'Corrected Label']],
-        column_config={"Correct?": st.column_config.CheckboxColumn("Correct?", default=False)},
-        use_container_width=True,
-        num_rows="dynamic"
-    )
-    
-    if st.button("Save Corrections", type="primary"):
-        st.success("Feedback functionality is ready.")
+    # --- Data Table ---
+    st.subheader("Processed Data")
+    st.dataframe(df[['Title', 'Identified Item', 'Price', 'Cleaned Sales']])
 
 except Exception as e:
     st.error(f"An error occurred: {e}")
