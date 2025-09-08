@@ -1,41 +1,23 @@
 # File: item_identifier.py
-import spacy
 import streamlit as st
-import spacy.cli
 
 class ItemIdentifier:
     """
     Tool #1: A self-contained engine to identify items from product titles.
+    This version uses simple text processing instead of a heavy NLP model.
     """
     def __init__(self):
-        """Loads the NLP model and defines noise words when the engine starts."""
-        self._nlp = self._load_model()
+        """Defines noise words when the engine starts."""
         self._noise_words = self._get_noise_words()
-
-    # Use Streamlit's caching to load the large NLP model only once.
-    @st.cache_resource
-    def _load_model(_self):
-        """
-        Loads the spaCy model. If not found, it downloads it automatically.
-        """
-        model_name = "en_core_web_sm"
-        try:
-            # Try to load the model directly
-            return spacy.load(model_name)
-        except OSError:
-            # If the model is not found, download it and then load it.
-            st.info(f"Downloading NLP model ({model_name})... This may take a moment.")
-            spacy.cli.download(model_name)
-            return spacy.load(model_name)
 
     def _get_noise_words(self):
         """Defines a set of common words to ignore for cleaner results."""
         return {
             'men', 'women', 'kids', 'man', 'woman', 'boys', 'girls',
             'home', 'gym', 'workout', 'exercise', 'training', 'gear',
-            'combo', 'kit', 'pack', 'set', 'material', 'bands',
-            'anti', 'slip', 'multi', 'mens', 'womens',
-            'for', 'and', 'with', 'the', 'a', 'in', 'of', 'per'
+            'combo', 'kit', 'pack', 'set', 'material', 'bands', 'anti',
+            'slip', 'multi', 'mens', 'womens', 'for', 'and', 'with', 'the',
+            'a', 'in', 'of', 'per', 'solid', 'pack', 'pcs'
         }
 
     def identify(self, title: str) -> str:
@@ -45,21 +27,13 @@ class ItemIdentifier:
         if not isinstance(title, str):
             return "Invalid Title"
 
-        doc = self._nlp(title.lower())
+        # Split title into words, remove noise, and find the first likely item
+        words = title.lower().split()
 
-        potential_items = []
-        for chunk in doc.noun_chunks:
-            chunk_text = chunk.text.strip()
-
-            if chunk_text in self._noise_words:
-                continue
-
-            if any(noise_word in chunk_text.split() for noise_word in self._noise_words):
-                continue
-
-            potential_items.append(chunk_text)
-
-        if potential_items:
-            return potential_items[0].title()
+        # Find the first word that isn't a noise word
+        for word in words:
+            clean_word = ''.join(e for e in word if e.isalnum())
+            if clean_word and clean_word not in self._noise_words:
+                return clean_word.title()
 
         return "Not Found"
