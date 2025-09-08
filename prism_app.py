@@ -1,125 +1,93 @@
+# File: prism_app.py
 import streamlit as st
 import pandas as pd
-import re
-import math
-import urllib.parse
-from item_identifier import ItemIdentifier # <-- IMPORT OUR NEW ENGINE
+from item_identifier import ItemIdentifier
 
 # --- Page Configuration ---
 st.set_page_config(
     page_title="PRISM MVP",
-    page_icon="🚀",
+    page_icon="🤖",
     layout="wide"
 )
 
-# --- Apple-Inspired CSS Styling ---
-st.markdown("""
-<style>
-/* (The CSS code is the same as before, so it's hidden for brevity) */
-html, body, [class*="st-"] { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #FFFFFF; color: #212121; }
-.main .block-container { padding-top: 2rem; padding-bottom: 2rem; }
-h1, h2, h3 { color: #1c1c1e; font-weight: 600; }
-h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.15rem; }
-.stButton>button, .stLinkButton>a { border-radius: 10px; border: 1px solid #d0d0d5; background-color: #f0f0f5; color: #1c1c1e !important; padding: 10px 24px; font-weight: 500; text-decoration: none; transition: all 0.2s ease-in-out; }
-.stButton>button:hover, .stLinkButton>a:hover { background-color: #e0e0e5; border-color: #c0c0c5; }
-div[data-testid="stMetric"] { background-color: #F9F9F9; border-radius: 12px; padding: 20px; border: 1px solid #EAEAEA; }
-div[data-testid="stMetric"] > label { font-size: 0.9rem; color: #555555; }
-div[data-testid="stMetric"] > div { font-size: 1.75rem; font-weight: 600; }
-.stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
-hr { background-color: #EAEAEA; }
-</style>
-""", unsafe_allow_html=True)
+# --- State Management ---
+# Initialize session state to hold data and feedback
+if 'product_data' not in st.session_state:
+    st.session_state.product_data = None
+if 'corrections' not in st.session_state:
+    st.session_state.corrections = []
 
-# --- Helper Functions & Engine Loading ---
-@st.cache_data
-def load_data(csv_path):
-    """Loads and preprocesses product data from a CSV file."""
+# --- Main App Logic ---
+st.title("PRISM: Product Item Identifier")
+st.markdown("Upload your `products.csv` file to begin.")
+
+# --- File Uploader ---
+uploaded_file = st.file_uploader(
+    "Choose a CSV file",
+    type="csv",
+    help="The CSV should contain a column named 'Title' with product names."
+)
+
+if uploaded_file is not None:
     try:
-        df = pd.read_csv(csv_path)
-        df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
-        df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
-        return df
-    except FileNotFoundError:
-        st.error(f"File not found: {csv_path}. Please ensure 'products.csv' is in your GitHub repository.")
-        st.stop()
+        # Load and process data only once per upload
+        if st.session_state.product_data is None:
+            df = pd.read_csv(uploaded_file)
+            
+            # Ensure 'Title' column exists
+            if 'Title' not in df.columns:
+                st.error("Error: The CSV file must contain a 'Title' column.")
+            else:
+                # Initialize the Item Identifier engine
+                identifier = ItemIdentifier()
+                
+                # Create the 'Identified Item' column
+                df['Identified Item'] = df['Title'].apply(identifier.identify)
+                
+                # --- Add columns for the feedback UI ---
+                df['Correct?'] = pd.Series([None]*len(df), dtype='boolean')
+                df['Corrected Label'] = pd.Series([""]*len(df), dtype='str')
+                
+                # Store the processed dataframe in the session state
+                st.session_state.product_data = df
 
-# NEW: A function to load our identifier engine, cached for performance.
-@st.cache_resource
-def load_identifier_engine():
-    return ItemIdentifier()
+        st.success("File processed successfully!")
 
-# (Other helper functions are the same)
-def get_rating_stars(rating_text: str) -> str:
-    if not isinstance(rating_text, str): return "N/A"
-    match = re.search(r'(\d\.\d)', rating_text)
-    if not match: return "N/A"
-    rating_num = float(match.group(1))
-    full_stars = int(rating_num)
-    half_star = "★" if (rating_num - full_stars) >= 0.8 else ("✫" if (rating_num - full_stars) > 0.2 else "")
-    empty_stars = 5 - full_stars - (1 if half_star else 0)
-    stars = "★" * full_stars + half_star + "☆" * empty_stars
-    return f"{rating_num} {stars}"
+        # --- Display the Interactive Data Editor ---
+        st.subheader("Review and Correct Identifications")
+        
+        edited_df = st.data_editor(
+            st.session_state.product_data,
+            column_config={
+                "Correct?": st.column_config.CheckboxColumn(
+                    "Correct?",
+                    help="Check if the 'Identified Item' is correct.",
+                    default=False,
+                )
+            },
+            use_container_width=True,
+            num_rows="dynamic",
+            key="data_editor"
+        )
 
-def clean_sales_text(sales_text: str) -> str:
-    if not isinstance(sales_text, str): return "N/A"
-    return sales_text.split(" ")[0]
+        # --- Save Corrections ---
+        if st.button("Save Corrections", type="primary"):
+            # Find rows where feedback was given
+            corrections_df = edited_df[edited_df['Correct?'].notna()]
+            
+            for index, row in corrections_df.iterrows():
+                feedback = {
+                    "Title": row["Title"],
+                    "Original_Guess": row["Identified Item"],
+                    "Is_Correct": row["Correct?"],
+                    "User_Correction": row["Corrected Label"] if not row["Correct?"] else ""
+                }
+                st.session_state.corrections.append(feedback)
 
-def generate_amazon_link(title: str) -> str:
-    base_url = "https://www.amazon.in/s?k="
-    search_query = urllib.parse.quote_plus(title)
-    return f"{base_url}{search_query}"
+            st.success(f"{len(st.session_state.corrections)} corrections have been saved for this session.")
+            st.info("In a full application, this data would be sent to a backend database.")
+            st.write(st.session_state.corrections) # Display saved corrections for verification
 
-# --- Session State Initialization ---
-if 'product_index' not in st.session_state:
-    st.session_state.product_index = 0
-
-# --- App Header ---
-st.title("PRISM")
-st.markdown("Product Research & Insight System")
-
-df = load_data('products.csv')
-identifier = load_identifier_engine() # <-- LOAD THE ENGINE
-
-st.caption(f"Loaded {len(df)} products for analysis.")
-st.divider()
-
-# --- Dashboard Layout ---
-current_product = df.iloc[st.session_state.product_index]
-col1, col2 = st.columns([1, 1.5], gap="large")
-
-with col1:
-    st.image(current_product.get('Image', ''), use_container_width=True)
-    if st.button("Discover Next Product →", use_container_width=True):
-        st.session_state.product_index = (st.session_state.product_index + 1) % len(df)
-        st.rerun()
-
-with col2:
-    title = current_product.get('Title', 'No Title Available')
-    st.markdown(f"### {title}")
-    amazon_url = generate_amazon_link(title)
-    st.link_button("View on Amazon ↗", url=amazon_url, use_container_width=True)
-    st.markdown("---")
-    
-    price = current_product.get('Price', 0)
-    sales = clean_sales_text(current_product.get('Monthly Sales', 'N/A'))
-    rating_str = get_rating_stars(current_product.get('Ratings', 'N/A'))
-    reviews = current_product.get('Review', 0)
-
-    metric_col1, metric_col2 = st.columns(2)
-    metric_col1.metric(label="Price", value=f"₹{price:,.0f}")
-    metric_col2.metric(label="Monthly Sales", value=sales)
-    
-    st.markdown("### Rating")
-    st.markdown(f"<h2 style='color: #212121; font-weight: 600;'>{rating_str}</h2>", unsafe_allow_html=True)
-    st.markdown(f"Based on **{int(reviews):,}** reviews.")
-
-    st.divider()
-
-    # --- PLUG IN THE ENGINE'S OUTPUT ---
-    st.subheader("PRISM Analysis")
-    # Use the engine to analyze the title
-    identified_item = identifier.identify(title)
-    # Display the result in a metric box
-    st.metric(label="Identified Item", value=identified_item)
-    st.info("The 'PRISM Score' will appear here once the next tool is built.")
-    
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        st.session_state.product_data = None # Reset on error
