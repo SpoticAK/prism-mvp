@@ -3,6 +3,7 @@ import pandas as pd
 import re
 import math
 import urllib.parse
+from item_identifier import ItemIdentifier # <-- IMPORT OUR NEW ENGINE
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -11,71 +12,25 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Clean, Apple-Inspired White Theme CSS ---
+# --- Apple-Inspired CSS Styling ---
 st.markdown("""
 <style>
-/* Base Styles */
-html, body, [class*="st-"] {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-    background-color: #FFFFFF; /* White Background */
-    color: #212121; /* Dark Grey Text */
-}
-/* Main App Container */
-.main .block-container {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-}
-/* Headers */
-h1, h2, h3 {
-    color: #1c1c1e;
-    font-weight: 600;
-}
-h1 { font-size: 2rem; }
-h2 { font-size: 1.5rem; }
-h3 { font-size: 1.15rem; }
-/* Buttons */
-.stButton>button, .stLinkButton>a {
-    border-radius: 10px;
-    border: 1px solid #d0d0d5;
-    background-color: #f0f0f5;
-    color: #1c1c1e !important; /* Important to override link color */
-    padding: 10px 24px;
-    font-weight: 500;
-    text-decoration: none; /* Remove underline from link button */
-    transition: all 0.2s ease-in-out;
-}
-.stButton>button:hover, .stLinkButton>a:hover {
-    background-color: #e0e0e5;
-    border-color: #c0c0c5;
-}
-/* Metric Containers */
-div[data-testid="stMetric"] {
-    background-color: #F9F9F9; /* Off-white for contrast */
-    border-radius: 12px;
-    padding: 20px;
-    border: 1px solid #EAEAEA;
-}
-div[data-testid="stMetric"] > label {
-    font-size: 0.9rem;
-    color: #555555;
-}
-div[data-testid="stMetric"] > div {
-    font-size: 1.75rem;
-    font-weight: 600;
-}
-/* Image styling */
-.stImage img {
-    border-radius: 12px;
-    border: 1px solid #EAEAEA;
-}
-/* Divider */
-hr {
-    background-color: #EAEAEA;
-}
+/* (The CSS code is the same as before, so it's hidden for brevity) */
+html, body, [class*="st-"] { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #FFFFFF; color: #212121; }
+.main .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+h1, h2, h3 { color: #1c1c1e; font-weight: 600; }
+h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.15rem; }
+.stButton>button, .stLinkButton>a { border-radius: 10px; border: 1px solid #d0d0d5; background-color: #f0f0f5; color: #1c1c1e !important; padding: 10px 24px; font-weight: 500; text-decoration: none; transition: all 0.2s ease-in-out; }
+.stButton>button:hover, .stLinkButton>a:hover { background-color: #e0e0e5; border-color: #c0c0c5; }
+div[data-testid="stMetric"] { background-color: #F9F9F9; border-radius: 12px; padding: 20px; border: 1px solid #EAEAEA; }
+div[data-testid="stMetric"] > label { font-size: 0.9rem; color: #555555; }
+div[data-testid="stMetric"] > div { font-size: 1.75rem; font-weight: 600; }
+.stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
+hr { background-color: #EAEAEA; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- Helper Functions ---
+# --- Helper Functions & Engine Loading ---
 @st.cache_data
 def load_data(csv_path):
     """Loads and preprocesses product data from a CSV file."""
@@ -88,8 +43,13 @@ def load_data(csv_path):
         st.error(f"File not found: {csv_path}. Please ensure 'products.csv' is in your GitHub repository.")
         st.stop()
 
+# NEW: A function to load our identifier engine, cached for performance.
+@st.cache_resource
+def load_identifier_engine():
+    return ItemIdentifier()
+
+# (Other helper functions are the same)
 def get_rating_stars(rating_text: str) -> str:
-    """Converts rating text into a number and star emojis."""
     if not isinstance(rating_text, str): return "N/A"
     match = re.search(r'(\d\.\d)', rating_text)
     if not match: return "N/A"
@@ -101,14 +61,11 @@ def get_rating_stars(rating_text: str) -> str:
     return f"{rating_num} {stars}"
 
 def clean_sales_text(sales_text: str) -> str:
-    """Cleans up the monthly sales text to be short and clear."""
     if not isinstance(sales_text, str): return "N/A"
     return sales_text.split(" ")[0]
 
 def generate_amazon_link(title: str) -> str:
-    """NEW: Creates a dynamic Amazon search link from a product title."""
     base_url = "https://www.amazon.in/s?k="
-    # URL-encode the title to handle spaces and special characters
     search_query = urllib.parse.quote_plus(title)
     return f"{base_url}{search_query}"
 
@@ -121,6 +78,8 @@ st.title("PRISM")
 st.markdown("Product Research & Insight System")
 
 df = load_data('products.csv')
+identifier = load_identifier_engine() # <-- LOAD THE ENGINE
+
 st.caption(f"Loaded {len(df)} products for analysis.")
 st.divider()
 
@@ -130,20 +89,15 @@ col1, col2 = st.columns([1, 1.5], gap="large")
 
 with col1:
     st.image(current_product.get('Image', ''), use_container_width=True)
-    
-    # MOVED: The "Next Product" button is now here for easier access.
     if st.button("Discover Next Product →", use_container_width=True):
         st.session_state.product_index = (st.session_state.product_index + 1) % len(df)
-        st.rerun() # Rerun the script to immediately show the next product
+        st.rerun()
 
 with col2:
     title = current_product.get('Title', 'No Title Available')
     st.markdown(f"### {title}")
-
-    # NEW: Generate the Amazon link and create a link button.
     amazon_url = generate_amazon_link(title)
     st.link_button("View on Amazon ↗", url=amazon_url, use_container_width=True)
-    
     st.markdown("---")
     
     price = current_product.get('Price', 0)
@@ -161,5 +115,11 @@ with col2:
 
     st.divider()
 
-    st.subheader("PRISM Analysis (Coming Soon)")
-    st.info("The 'Identified Item' and 'PRISM Score' will appear here.")
+    # --- PLUG IN THE ENGINE'S OUTPUT ---
+    st.subheader("PRISM Analysis")
+    # Use the engine to analyze the title
+    identified_item = identifier.identify(title)
+    # Display the result in a metric box
+    st.metric(label="Identified Item", value=identified_item)
+    st.info("The 'PRISM Score' will appear here once the next tool is built.")
+    
