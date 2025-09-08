@@ -1,6 +1,7 @@
 # File: item_identifier.py
 import spacy
 import streamlit as st
+import spacy.cli
 
 class ItemIdentifier:
     """
@@ -14,18 +15,21 @@ class ItemIdentifier:
     # Use Streamlit's caching to load the large NLP model only once.
     @st.cache_resource
     def _load_model(_self):
-        """Loads the spaCy NLP model."""
+        """
+        NEW METHOD: Loads the spaCy model. If not found, it downloads it automatically.
+        """
+        model_name = "en_core_web_sm"
         try:
-            return spacy.load("en_core_web_sm")
+            # Try to load the model directly
+            return spacy.load(model_name)
         except OSError:
-            # This is a fallback for local testing if the model isn't installed.
-            print("Downloading 'en_core_web_sm' model...")
-            spacy.cli.download("en_core_web_sm")
-            return spacy.load("en_core_web_sm")
+            # If the model is not found, download it and then load it.
+            st.info(f"Downloading NLP model ({model_name})... This may take a moment.")
+            spacy.cli.download(model_name)
+            return spacy.load(model_name)
 
     def _get_noise_words(self):
         """Defines a set of common words to ignore for cleaner results."""
-        # We can add more words to this set over time to improve accuracy.
         return {
             'men', 'women', 'kids', 'man', 'woman', 'boys', 'girls',
             'home', 'gym', 'workout', 'exercise', 'training', 'gear',
@@ -41,26 +45,21 @@ class ItemIdentifier:
         if not isinstance(title, str):
             return "Invalid Title"
 
-        # Process the title with the NLP model.
         doc = self._nlp(title.lower())
         
         potential_items = []
-        # spaCy breaks the title into "noun chunks" (e.g., "yoga mats", "anti slip eva material").
         for chunk in doc.noun_chunks:
             chunk_text = chunk.text.strip()
             
-            # Rule 1: Skip if the entire chunk is just a noise word.
             if chunk_text in self._noise_words:
                 continue
             
-            # Rule 2: Skip if the chunk contains any noise words.
             if any(noise_word in chunk_text.split() for noise_word in self._noise_words):
                 continue
             
             potential_items.append(chunk_text)
         
-        # If we found any valid items, return the first and most likely one.
         if potential_items:
-            return potential_items[0].title() # .title() capitalizes it nicely
+            return potential_items[0].title()
         
         return "Not Found"
