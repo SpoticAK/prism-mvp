@@ -1,6 +1,7 @@
 # File: prism_app.py
 import streamlit as st
 import pandas as pd
+import re
 from item_identifier import ItemIdentifier
 
 # --- Page Configuration ---
@@ -11,61 +12,81 @@ st.set_page_config(
 )
 
 # --- State Management ---
-if 'product_data' not in st.session_state:
-    st.session_state.product_data = None
+if 'processed_data' not in st.session_state:
+    st.session_state.processed_data = None
 
 # --- Data Cleaning & Processing ---
-def clean_and_process_data(df):
-    """A robust function to clean sales data and identify items."""
+def clean_sales_value(sale_entry):
+    """
+    A robust function to clean a single sales data entry.
+    Handles formats like '500+', '3K+', '1,939', and empty values.
+    """
+    # If the entry is missing or not a string, treat as 0
+    if pd.isna(sale_entry) or not isinstance(sale_entry, str):
+        return 0
     
-    # 1. Clean 'Monthly Sales' column
-    # Fill missing values with '0'
-    df['Monthly Sales'] = df['Monthly Sales'].fillna('0') 
+    # Standardize the string
+    s = str(sale_entry).lower().strip()
     
-    # Convert to string and handle 'K' for thousands, remove '+' and commas
-    sales_str = df['Monthly Sales'].astype(str)
-    sales_str = sales_str.str.lower().str.replace('k+', '000', regex=True)
-    sales_str = sales_str.str.replace(r'[^\d]', '', regex=True) # Remove all non-digits
+    # Isolate the first part of the string (e.g., "500+" from "500+ bought...")
+    s = s.split(' ')[0]
 
-    # Convert to numeric, coercing errors to 0
-    df['Cleaned Sales'] = pd.to_numeric(sales_str, errors='coerce').fillna(0).astype(int)
-
-    # 2. Initialize and run the Item Identifier
-    identifier = ItemIdentifier()
-    df['Identified Item'] = df['Title'].apply(identifier.identify)
+    # Remove commas and '+' signs
+    s = s.replace(',', '').replace('+', '')
     
-    # 3. Add feedback columns for the UI
-    df['Correct?'] = pd.Series([None]*len(df), dtype='boolean')
-    df['Corrected Label'] = pd.Series([""]*len(df), dtype='str')
-    
-    return df
+    value = 0
+    try:
+        # Handle 'k' for thousands
+        if 'k' in s:
+            s = s.replace('k', '')
+            value = float(s) * 1000
+        else:
+            # Handle regular numbers
+            numeric_part = re.sub(r'[^\d.]', '', s)
+            if numeric_part:
+                value = float(numeric_part)
+    except (ValueError, TypeError):
+        # If any conversion fails, default to 0
+        return 0
+            
+    return int(value)
 
-# --- Data Loading ---
 @st.cache_data
-def load_data_from_github():
-    """Loads and processes the data from the GitHub repository."""
+def load_and_process_data():
+    """Loads data from GitHub and performs all cleaning and processing."""
     github_user = "spoticak"
     repo_name = "prism-mvp"
     file_path = "products.csv"
     url = f"https://raw.githubusercontent.com/{github_user}/{repo_name}/main/{file_path}"
     
     df = pd.read_csv(url)
-    processed_df = clean_and_process_data(df)
-    return processed_df
+    
+    # Apply the robust cleaning function to the 'Monthly Sales' column
+    df['Cleaned Sales'] = df['Monthly Sales'].apply(clean_sales_value)
+    
+    # Initialize and run the Item Identifier
+    identifier = ItemIdentifier()
+    df['Identified Item'] = df['Title'].apply(identifier.identify)
+    
+    # Add feedback columns for the UI
+    df['Correct?'] = pd.Series([None]*len(df), dtype='boolean')
+    df['Corrected Label'] = pd.Series([""]*len(df), dtype='str')
+    
+    return df
 
-# --- Main App Logic ---
+# --- Main App ---
 st.title("PRISM: Product Intelligence & Sales Monitoring")
 
 try:
-    # Load and process data only if it's not already in the session state
-    if st.session_state.product_data is None:
+    # Load and process data once and store in session state
+    if st.session_state.processed_data is None:
         with st.spinner("Loading and analyzing data from your repository..."):
-            st.session_state.product_data = load_data_from_github()
+            st.session_state.processed_data = load_and_process_data()
+
+    df = st.session_state.processed_data
 
     # --- Main Dashboard Display ---
     st.success("Dashboard generated from `products.csv` in your repository.")
-
-    df = st.session_state.product_data
 
     # --- Key Metrics ---
     total_sales = df['Cleaned Sales'].sum()
@@ -81,22 +102,18 @@ try:
 
     # --- Charts ---
     col1, col2 = st.columns(2)
-
     with col1:
         st.subheader("Top 10 Products by Sales")
-        top_10_sales = df.nlargest(10, 'Cleaned Sales')
-        st.bar_chart(top_10_sales, x='Title', y='Cleaned Sales')
-
+        st.bar_chart(df.nlargest(10, 'Cleaned Sales'), x='Title', y='Cleaned Sales')
     with col2:
         st.subheader("Top 10 Identified Items by Sales")
-        top_items = df.groupby('Identified Item')['Cleaned Sales'].sum().nlargest(10)
-        st.bar_chart(top_items)
+        st.bar_chart(df.groupby('Identified Item')['Cleaned Sales'].sum().nlargest(10))
     
     st.markdown("---")
 
     # --- Feedback Section ---
     st.subheader("Review and Correct Identifications")
-    edited_df = st.data_editor(
+    st.data_editor(
         df[['Title', 'Identified Item', 'Correct?', 'Corrected Label']],
         column_config={"Correct?": st.column_config.CheckboxColumn("Correct?", default=False)},
         use_container_width=True,
@@ -104,8 +121,7 @@ try:
     )
     
     if st.button("Save Corrections", type="primary"):
-        st.success("Feedback functionality is connected.")
-        # In a full app, this is where you'd write to corrections.csv
+        st.success("Feedback functionality is ready.")
 
 except Exception as e:
     st.error(f"An error occurred: {e}")
