@@ -16,7 +16,7 @@ class ItemIdentifier:
     @st.cache_resource
     def _load_model(_self):
         """
-        NEW METHOD: Loads the spaCy model. If not found, it downloads it automatically.
+        Loads the spaCy model. If not found, it downloads it automatically.
         """
         model_name = "en_core_web_sm"
         try:
@@ -46,20 +46,20 @@ class ItemIdentifier:
             return "Invalid Title"
 
         doc = self._nlp(title.lower())
-        
+
         potential_items = []
         for chunk in doc.noun_chunks:
             chunk_text = chunk.text.strip()
-            
+
             if chunk_text in self._noise_words:
                 continue
-            
+
             if any(noise_word in chunk_text.split() for noise_word in self._noise_words):
                 continue
-            
+
             potential_items.append(chunk_text)
-        
+
         if potential_items:
             return potential_items[0].title()
-        
+
         return "Not Found"
