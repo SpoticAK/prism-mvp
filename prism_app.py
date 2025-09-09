@@ -6,7 +6,9 @@ import math
 import urllib.parse
 import random
 from item_identifier import ItemIdentifier
+from listing_quality_evaluator import ListingQualityEvaluator # Updated import
 
+# --- (Your CSS and Helper Functions remain the same) ---
 # --- Page Configuration ---
 st.set_page_config(
     page_title="PRISM MVP",
@@ -78,7 +80,7 @@ hr {
 </style>
 """, unsafe_allow_html=True)
 
-# --- Helper Functions ---
+
 @st.cache_data
 def load_data(csv_path):
     """Loads and preprocesses product data from a CSV file."""
@@ -87,9 +89,12 @@ def load_data(csv_path):
         df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
         df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         
-        identifier = ItemIdentifier()
-        df['Identified Item'] = df['Title'].apply(identifier.identify)
-
+        # --- INTEGRATION: Use both engines ---
+        item_engine = ItemIdentifier()
+        quality_engine = ListingQualityEvaluator() # Use the new class name
+        df['Identified Item'] = df['Title'].apply(item_engine.identify)
+        df['Listing Quality Score'] = df['Image'].apply(quality_engine.get_score) # New column name
+        
         return df
     except FileNotFoundError:
         st.error(f"File not found: {csv_path}. Please ensure 'products.csv' is in your GitHub repository.")
@@ -154,6 +159,7 @@ with col2:
     rating_str = get_rating_stars(current_product.get('Ratings', 'N/A'))
     reviews = current_product.get('Review', 0)
     identified_item = current_product.get('Identified Item', 'N/A')
+    quality_score = current_product.get('Listing Quality Score', 0) # Updated variable name
 
     metric_col1, metric_col2 = st.columns(2)
     metric_col1.metric(label="Price", value=f"₹{price:,.0f}")
@@ -164,5 +170,6 @@ with col2:
     st.markdown(f"Based on **{int(reviews):,}** reviews.")
     st.divider()
 
-    st.subheader("PRISM Analysis (Coming Soon)")
-    st.info(f"**Identified Item:** {identified_item}\n\nThe 'PRISM Score' for **{identified_item}** will appear here.")
+    st.subheader("PRISM Analysis")
+    # Updated the output text to be more professional
+    st.info(f"**Identified Item:** {identified_item}\n\n**Listing Quality Score:** {quality_score}/100")
