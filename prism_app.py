@@ -5,7 +5,7 @@ import re
 import math
 import urllib.parse
 import random
-from item_identifier import ItemIdentifier
+from item_identifier import ItemIdentifier # Make sure this import is present
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -41,10 +41,10 @@ h3 { font-size: 1.15rem; }
     border-radius: 10px;
     border: 1px solid #d0d0d5;
     background-color: #f0f0f5;
-    color: #1c1c1e !important; /* Important to override link color */
+    color: #1c1c1e !important;
     padding: 10px 24px;
     font-weight: 500;
-    text-decoration: none; /* Remove underline from link button */
+    text-decoration: none;
     transition: all 0.2s ease-in-out;
 }
 .stButton>button:hover, .stLinkButton>a:hover {
@@ -53,7 +53,7 @@ h3 { font-size: 1.15rem; }
 }
 /* Metric Containers */
 div[data-testid="stMetric"] {
-    background-color: #F9F9F9; /* Off-white for contrast */
+    background-color: #F9F9F9;
     border-radius: 12px;
     padding: 20px;
     border: 1px solid #EAEAEA;
@@ -87,17 +87,16 @@ def load_data(csv_path):
         df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
         df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         
-        # Use the ItemIdentifier Engine
+        # --- INTEGRATION: Use the ItemIdentifier Engine ---
         identifier = ItemIdentifier()
         df['Identified Item'] = df['Title'].apply(identifier.identify)
-
+        
         return df
     except FileNotFoundError:
         st.error(f"File not found: {csv_path}. Please ensure 'products.csv' is in your GitHub repository.")
         st.stop()
 
 def get_rating_stars(rating_text: str) -> str:
-    """Converts rating text into a number and star emojis."""
     if not isinstance(rating_text, str): return "N/A"
     match = re.search(r'(\d\.\d)', rating_text)
     if not match: return "N/A"
@@ -109,12 +108,10 @@ def get_rating_stars(rating_text: str) -> str:
     return f"{rating_num} {stars}"
 
 def clean_sales_text(sales_text: str) -> str:
-    """Cleans up the monthly sales text to be short and clear."""
     if not isinstance(sales_text, str): return "N/A"
     return sales_text.split(" ")[0]
 
 def generate_amazon_link(title: str) -> str:
-    """Creates a dynamic Amazon search link from a product title."""
     base_url = "https://www.amazon.in/s?k="
     search_query = urllib.parse.quote_plus(title)
     return f"{base_url}{search_query}"
@@ -142,19 +139,15 @@ col1, col2 = st.columns([1, 1.5], gap="large")
 
 with col1:
     st.image(current_product.get('Image', ''), use_container_width=True)
-    
     if st.button("Discover Next Product →", use_container_width=True):
         st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
         st.rerun()
 
 with col2:
-    # Restored the full product title to its prominent position
     title = current_product.get('Title', 'No Title Available')
     st.markdown(f"### {title}")
-    
     amazon_url = generate_amazon_link(title)
     st.link_button("View on Amazon ↗", url=amazon_url, use_container_width=True)
-    
     st.markdown("---")
     
     price = current_product.get('Price', 0)
@@ -170,9 +163,7 @@ with col2:
     st.markdown("### Rating")
     st.markdown(f"<h2 style='color: #212121; font-weight: 600;'>{rating_str}</h2>", unsafe_allow_html=True)
     st.markdown(f"Based on **{int(reviews):,}** reviews.")
-
     st.divider()
 
     st.subheader("PRISM Analysis (Coming Soon)")
-    # Moved "Identified Item" here for a cleaner layout
-    st.info(f"**Identified Item:** {identified_item}\n\nThe full 'PRISM Score' will appear here.")
+    st.info(f"**Identified Item:** {identified_item}\n\nThe 'PRISM Score' for **{identified_item}** will appear here.")
