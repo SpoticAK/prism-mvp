@@ -9,7 +9,9 @@ class ItemIdentifier:
     Identifies the core item from a product title using Part-of-Speech (POS) tagging.
     """
     def __init__(self):
+        # This function will now run directly and is cached by Streamlit.
         self._download_nltk_data()
+        
         self._noise_words = {
             "men's", "women's", "boy's", "girl's", 'mens', 'womens', 'for', 
             'and', 'with', 'the', 'a', 'in', 'of', 'per', 'pack', 'set'
@@ -19,13 +21,10 @@ class ItemIdentifier:
     @st.cache_resource
     def _download_nltk_data(_self):
         """
-        Downloads the necessary NLTK corpora for TextBlob's tagger.
-        Uses a general LookupError to be compatible with different NLTK versions.
+        THE FIX: Directly downloads the necessary NLTK corpora for TextBlob's tagger.
+        The @st.cache_resource decorator ensures this only runs once.
         """
-        try:
-            nltk.data.find('taggers/averaged_perceptron_tagger')
-        except LookupError: # This is the fix. LookupError is more general.
-            nltk.download('averaged_perceptron_tagger')
+        nltk.download('averaged_perceptron_tagger')
 
     def identify(self, title: str) -> str:
         """
