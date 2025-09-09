@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import re
 import math
+import urllib.parse
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -19,13 +20,11 @@ html, body, [class*="st-"] {
     background-color: #FFFFFF; /* White Background */
     color: #212121; /* Dark Grey Text */
 }
-
 /* Main App Container */
 .main .block-container {
     padding-top: 2rem;
     padding-bottom: 2rem;
 }
-
 /* Headers */
 h1, h2, h3 {
     color: #1c1c1e;
@@ -34,22 +33,21 @@ h1, h2, h3 {
 h1 { font-size: 2rem; }
 h2 { font-size: 1.5rem; }
 h3 { font-size: 1.15rem; }
-
 /* Buttons */
-.stButton>button {
+.stButton>button, .stLinkButton>a {
     border-radius: 10px;
     border: 1px solid #d0d0d5;
     background-color: #f0f0f5;
-    color: #1c1c1e;
+    color: #1c1c1e !important; /* Important to override link color */
     padding: 10px 24px;
     font-weight: 500;
+    text-decoration: none; /* Remove underline from link button */
     transition: all 0.2s ease-in-out;
 }
-.stButton>button:hover {
+.stButton>button:hover, .stLinkButton>a:hover {
     background-color: #e0e0e5;
     border-color: #c0c0c5;
 }
-
 /* Metric Containers */
 div[data-testid="stMetric"] {
     background-color: #F9F9F9; /* Off-white for contrast */
@@ -65,13 +63,11 @@ div[data-testid="stMetric"] > div {
     font-size: 1.75rem;
     font-weight: 600;
 }
-
 /* Image styling */
 .stImage img {
     border-radius: 12px;
     border: 1px solid #EAEAEA;
 }
-
 /* Divider */
 hr {
     background-color: #EAEAEA;
@@ -85,7 +81,6 @@ def load_data(csv_path):
     """Loads and preprocesses product data from a CSV file."""
     try:
         df = pd.read_csv(csv_path)
-        # Clean data on load
         df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
         df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         return df
@@ -94,27 +89,28 @@ def load_data(csv_path):
         st.stop()
 
 def get_rating_stars(rating_text: str) -> str:
-    """FIXED: Converts rating text into a number and star emojis."""
-    if not isinstance(rating_text, str):
-        return "N/A"
-    
+    """Converts rating text into a number and star emojis."""
+    if not isinstance(rating_text, str): return "N/A"
     match = re.search(r'(\d\.\d)', rating_text)
-    if not match:
-        return "N/A"
-        
+    if not match: return "N/A"
     rating_num = float(match.group(1))
     full_stars = int(rating_num)
     half_star = "★" if (rating_num - full_stars) >= 0.8 else ("✫" if (rating_num - full_stars) > 0.2 else "")
     empty_stars = 5 - full_stars - (1 if half_star else 0)
-    
     stars = "★" * full_stars + half_star + "☆" * empty_stars
     return f"{rating_num} {stars}"
 
 def clean_sales_text(sales_text: str) -> str:
-    """FIXED: Cleans up the monthly sales text to be short and clear."""
-    if not isinstance(sales_text, str):
-        return "N/A"
+    """Cleans up the monthly sales text to be short and clear."""
+    if not isinstance(sales_text, str): return "N/A"
     return sales_text.split(" ")[0]
+
+def generate_amazon_link(title: str) -> str:
+    """NEW: Creates a dynamic Amazon search link from a product title."""
+    base_url = "https://www.amazon.in/s?k="
+    # URL-encode the title to handle spaces and special characters
+    search_query = urllib.parse.quote_plus(title)
+    return f"{base_url}{search_query}"
 
 # --- Session State Initialization ---
 if 'product_index' not in st.session_state:
@@ -125,16 +121,7 @@ st.title("PRISM")
 st.markdown("Product Research & Insight System")
 
 df = load_data('products.csv')
-
-# --- Main Controls ---
-col_nav1, col_nav2 = st.columns([3, 1])
-with col_nav1:
-    # VISIBLE COUNTER to track progress and debug
-    st.caption(f"Showing Product {st.session_state.product_index + 1} of {len(df)}")
-with col_nav2:
-    if st.button("Discover Next Product →", use_container_width=True):
-        st.session_state.product_index = (st.session_state.product_index + 1) % len(df)
-
+st.caption(f"Loaded {len(df)} products for analysis.")
 st.divider()
 
 # --- Dashboard Layout ---
@@ -143,17 +130,27 @@ col1, col2 = st.columns([1, 1.5], gap="large")
 
 with col1:
     st.image(current_product.get('Image', ''), use_container_width=True)
+    
+    # MOVED: The "Next Product" button is now here for easier access.
+    if st.button("Discover Next Product →", use_container_width=True):
+        st.session_state.product_index = (st.session_state.product_index + 1) % len(df)
+        st.rerun() # Rerun the script to immediately show the next product
 
 with col2:
-    st.markdown(f"### {current_product.get('Title', 'No Title Available')}")
+    title = current_product.get('Title', 'No Title Available')
+    st.markdown(f"### {title}")
 
+    # NEW: Generate the Amazon link and create a link button.
+    amazon_url = generate_amazon_link(title)
+    st.link_button("View on Amazon ↗", url=amazon_url, use_container_width=True)
+    
+    st.markdown("---")
+    
     price = current_product.get('Price', 0)
     sales = clean_sales_text(current_product.get('Monthly Sales', 'N/A'))
     rating_str = get_rating_stars(current_product.get('Ratings', 'N/A'))
     reviews = current_product.get('Review', 0)
 
-    st.markdown("---")
-    
     metric_col1, metric_col2 = st.columns(2)
     metric_col1.metric(label="Price", value=f"₹{price:,.0f}")
     metric_col2.metric(label="Monthly Sales", value=sales)
