@@ -3,8 +3,8 @@ import re
 
 class ItemIdentifier:
     """
-    Identifies the core item from a product title using the "Smart Cut-off"
-    and an expanded noise word list. No external NLP libraries are needed.
+    Identifies the core item from a product title using a hardcoded
+    "Golden Zone" and an expanded noise word list. No external NLP libraries needed.
     """
     def __init__(self):
         # A comprehensive, hardcoded list of words to ignore.
@@ -15,9 +15,8 @@ class ItemIdentifier:
             'retractable', 'handheld', 'rechargeable', 'portable', 'soft', 'stretchy',
             'cushioned', 'breathable', 'sturdy', 'micronized', 'new', 'complete',
 
-            # Possessives & Genders
-            "men's", "women's", "boy's", "girl's", 'mens', 'womens', 'men',
-            'women', 'kids', 'man', 'woman', 'boys', 'girls', 'unisex', 'adult',
+            # Genders (now without apostrophes)
+            'men', 'women', 'kids', 'man', 'woman', 'boys', 'girls', 'unisex', 'adult',
 
             # Common Filler Words
             'home', 'gym', 'workout', 'exercise', 'training', 'gear', 'for',
@@ -37,7 +36,7 @@ class ItemIdentifier:
 
     def identify(self, title: str) -> str:
         """
-        Processes a title using the "Smart Cut-off" logic.
+        Processes a title using the "Smart Cut-off" logic with improved cleaning.
         """
         if not isinstance(title, str):
             return "Not Found"
@@ -45,19 +44,16 @@ class ItemIdentifier:
         # 1. Create the "Smart Cut-off" Golden Zone
         limit = 50
         if len(title) > limit:
-            # Find the next space *after* the 50-character limit
             next_space = title.find(' ', limit)
-            if next_space != -1:
-                # If a space is found, cut off there
-                golden_zone = title[:next_space]
-            else:
-                # If no space is found, just take the initial part
-                golden_zone = title[:limit]
+            golden_zone = title[:next_space] if next_space != -1 else title[:limit]
         else:
             golden_zone = title
         
         # 2. Advanced Filtering
-        cleaned_zone = self._spec_pattern.sub('', golden_zone.lower())
+        # CRITICAL FIX: Sanitize possessives *before* tokenizing.
+        sanitized_zone = golden_zone.lower().replace("'s", "")
+        
+        cleaned_zone = self._spec_pattern.sub('', sanitized_zone)
         words = re.findall(r'\b[a-zA-Z-]+\b', cleaned_zone)
         
         if not words:
@@ -72,7 +68,7 @@ class ItemIdentifier:
         if not item_words:
             return "Not Found"
 
-        # 3. Join the remaining words to form the item name
+        # 3. Join the remaining words
         identified_phrase = " ".join(item_words)
 
         return identified_phrase.title()
