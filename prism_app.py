@@ -4,7 +4,8 @@ import pandas as pd
 import re
 import math
 import urllib.parse
-import random # Import the 'random' library for shuffling
+import random
+from item_identifier import ItemIdentifier # Import our new engine
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -85,6 +86,12 @@ def load_data(csv_path):
         df = pd.read_csv(csv_path)
         df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
         df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
+        
+        # --- INTEGRATION: Use the ItemIdentifier Engine ---
+        identifier = ItemIdentifier()
+        df['Identified Item'] = df['Title'].apply(identifier.identify)
+        # --- END INTEGRATION ---
+
         return df
     except FileNotFoundError:
         st.error(f"File not found: {csv_path}. Please ensure 'products.csv' is in your GitHub repository.")
@@ -116,7 +123,6 @@ def generate_amazon_link(title: str) -> str:
 # --- Session State Initialization ---
 df = load_data('products.csv')
 
-# NEW: Create and store a shuffled list of indices on the first run
 if 'shuffled_indices' not in st.session_state:
     indices = list(df.index)
     random.shuffle(indices)
@@ -130,7 +136,6 @@ st.caption(f"Loaded and shuffled {len(df)} products for discovery.")
 st.divider()
 
 # --- Dashboard Layout ---
-# Use the pointer to get the current shuffled index
 current_index = st.session_state.shuffled_indices[st.session_state.product_pointer]
 current_product = df.iloc[current_index]
 
@@ -140,7 +145,6 @@ with col1:
     st.image(current_product.get('Image', ''), use_container_width=True)
     
     if st.button("Discover Next Product →", use_container_width=True):
-        # Move to the next product in the shuffled list
         st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
         st.rerun()
 
@@ -157,6 +161,10 @@ with col2:
     sales = clean_sales_text(current_product.get('Monthly Sales', 'N/A'))
     rating_str = get_rating_stars(current_product.get('Ratings', 'N/A'))
     reviews = current_product.get('Review', 0)
+    
+    # NEW: Display the Identified Item
+    identified_item = current_product.get('Identified Item', 'N/A')
+    st.metric(label="Identified Item", value=identified_item)
 
     metric_col1, metric_col2 = st.columns(2)
     metric_col1.metric(label="Price", value=f"₹{price:,.0f}")
@@ -169,4 +177,4 @@ with col2:
     st.divider()
 
     st.subheader("PRISM Analysis (Coming Soon)")
-    st.info("The 'Identified Item' and 'PRISM Score' will appear here.")
+    st.info(f"The 'PRISM Score' for **{identified_item}** will appear here.")
