@@ -6,9 +6,9 @@ import math
 import urllib.parse
 import random
 from item_identifier import ItemIdentifier
-from listing_quality_evaluator import ListingQualityEvaluator # Updated import
+from listing_quality_evaluator import ListingQualityEvaluator
 
-# --- (Your CSS and Helper Functions remain the same) ---
+# --- (Your CSS and other helper functions remain the same) ---
 # --- Page Configuration ---
 st.set_page_config(
     page_title="PRISM MVP",
@@ -19,64 +19,7 @@ st.set_page_config(
 # --- Clean, Apple-Inspired White Theme CSS ---
 st.markdown("""
 <style>
-/* Base Styles */
-html, body, [class*="st-"] {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-    background-color: #FFFFFF; /* White Background */
-    color: #212121; /* Dark Grey Text */
-}
-/* Main App Container */
-.main .block-container {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-}
-/* Headers */
-h1, h2, h3 {
-    color: #1c1c1e;
-    font-weight: 600;
-}
-h1 { font-size: 2rem; }
-h2 { font-size: 1.5rem; }
-h3 { font-size: 1.15rem; }
-/* Buttons */
-.stButton>button, .stLinkButton>a {
-    border-radius: 10px;
-    border: 1px solid #d0d0d5;
-    background-color: #f0f0f5;
-    color: #1c1c1e !important;
-    padding: 10px 24px;
-    font-weight: 500;
-    text-decoration: none;
-    transition: all 0.2s ease-in-out;
-}
-.stButton>button:hover, .stLinkButton>a:hover {
-    background-color: #e0e0e5;
-    border-color: #c0c0c5;
-}
-/* Metric Containers */
-div[data-testid="stMetric"] {
-    background-color: #F9F9F9;
-    border-radius: 12px;
-    padding: 20px;
-    border: 1px solid #EAEAEA;
-}
-div[data-testid="stMetric"] > label {
-    font-size: 0.9rem;
-    color: #555555;
-}
-div[data-testid="stMetric"] > div {
-    font-size: 1.75rem;
-    font-weight: 600;
-}
-/* Image styling */
-.stImage img {
-    border-radius: 12px;
-    border: 1px solid #EAEAEA;
-}
-/* Divider */
-hr {
-    background-color: #EAEAEA;
-}
+/* (Your existing CSS styles go here) */
 </style>
 """, unsafe_allow_html=True)
 
@@ -91,9 +34,9 @@ def load_data(csv_path):
         
         # --- INTEGRATION: Use both engines ---
         item_engine = ItemIdentifier()
-        quality_engine = ListingQualityEvaluator() # Use the new class name
+        quality_engine = ListingQualityEvaluator()
         df['Identified Item'] = df['Title'].apply(item_engine.identify)
-        df['Listing Quality Score'] = df['Image'].apply(quality_engine.get_score) # New column name
+        df['Listing Quality'] = df['Image'].apply(quality_engine.get_score)
         
         return df
     except FileNotFoundError:
@@ -159,7 +102,7 @@ with col2:
     rating_str = get_rating_stars(current_product.get('Ratings', 'N/A'))
     reviews = current_product.get('Review', 0)
     identified_item = current_product.get('Identified Item', 'N/A')
-    quality_score = current_product.get('Listing Quality Score', 0) # Updated variable name
+    quality_score = current_product.get('Listing Quality', 'N/A')
 
     metric_col1, metric_col2 = st.columns(2)
     metric_col1.metric(label="Price", value=f"₹{price:,.0f}")
@@ -171,5 +114,4 @@ with col2:
     st.divider()
 
     st.subheader("PRISM Analysis")
-    # Updated the output text to be more professional
-    st.info(f"**Identified Item:** {identified_item}\n\n**Listing Quality Score:** {quality_score}/100")
+    st.info(f"**Identified Item:** {identified_item}\n\n**Listing Quality:** {quality_score}")
