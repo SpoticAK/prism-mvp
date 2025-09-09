@@ -1,59 +1,61 @@
 # File: item_identifier.py
 import re
+import streamlit as st
+from textblob import TextBlob
+import nltk
 
 class ItemIdentifier:
     """
-    Identifies the core item from a product title using the "Headline" approach.
+    Identifies the core item from a product title using Part-of-Speech (POS) tagging.
     """
     def __init__(self):
-        # A curated list of adjectives, specs, and other non-essential words.
+        # Download necessary NLTK data for TextBlob's POS tagger.
+        # This is a one-time, lightweight download managed by Streamlit's cache.
+        self._download_nltk_data()
+        
+        # A curated list for possessives and other non-adjective noise words.
         self._noise_words = {
-            'men', 'women', 'kids', 'man', 'woman', 'boys', 'girls', 'mens', 
-            'womens', 'unisex', 'adult', 'home', 'gym', 'workout', 'exercise', 
-            'training', 'gear', 'for', 'accessories', 'powerlifting', 'solid', 
-            'combo', 'kit', 'pack', 'set', 'pcs', 'of', 'gram', 'serves', 
-            'piece', 'pieces', 'anti', 'slip', 'multi', 'heavy', 'duty', 'premium', 
-            'high', 'quality', 'mini', 'loop', 'with', 'and', 'the', 'a', 'in', 
-            'per', 'stylish', 'comfortable', 'better', 'ideal', 'everyday', 'use', 
-            'black', 'white', 'red', 'blue', 'green', 'multicolor', 'large', 
-            'medium', 'small', 'size', 'fit', 'fitness', 'toning', 'band', 
-            'bands', 'waterproof', 'convertible', 'streachable', 'full'
+            "men's", "women's", "boy's", "girl's", 'mens', 'womens',
+            'for', 'and', 'with', 'the', 'a', 'in', 'of', 'per', 'pack', 'set'
         }
-        # Regex to find and remove specifications like "20L", "500ML", "4mm"
         self._spec_pattern = re.compile(r'\b(\d+l|\d+ml|\d+mm|\d+g|\d+kg)\b')
+
+    @st.cache_resource
+    def _download_nltk_data(_self):
+        """Downloads the necessary corpora for TextBlob's tagger."""
+        try:
+            nltk.data.find('taggers/averaged_perceptron_tagger')
+        except nltk.downloader.DownloadError:
+            nltk.download('averaged_perceptron_tagger')
 
     def identify(self, title: str) -> str:
         """
-        Processes a title using the 50-character "Golden Zone" logic.
+        Processes a title using grammar-based filtering to find the core item.
         """
         if not isinstance(title, str):
             return "Not Found"
 
         # 1. Isolate the 50-character "Golden Zone"
-        golden_zone = title[:50].lower()
+        golden_zone = title[:50]
 
-        # 2. Advanced Filtering
+        # 2. Advanced Filtering using Grammar
         # Remove specifications first (e.g., "20l")
-        cleaned_zone = self._spec_pattern.sub('', golden_zone)
+        cleaned_zone = self._spec_pattern.sub('', golden_zone.lower())
         
-        # Tokenize (split into words)
-        words = re.findall(r'\b[a-zA-Z-]+\b', cleaned_zone)
+        # Analyze the grammar of the zone
+        blob = TextBlob(cleaned_zone)
         
-        if not words:
-            return "Not Found"
-            
-        # Assume first word is brand and remove it
-        candidate_words = words[1:]
-        
-        # Remove noise words
-        item_words = [w for w in candidate_words if w not in self._noise_words]
+        item_words = []
+        for word, tag in blob.tags:
+            # Check if the word is NOT an adjective (JJ, JJR, JJS) and NOT in our noise list
+            if tag not in ['JJ', 'JJR', 'JJS'] and word not in self._noise_words:
+                item_words.append(word)
 
         if not item_words:
             return "Not Found"
 
         # 3. Identify the first coherent noun phrase
-        # We simply join the remaining clean words from left to right.
-        # This works because the aggressive filtering has removed the fluff.
+        # We join the remaining clean words (mostly nouns) from left to right.
         identified_phrase = " ".join(item_words)
 
         return identified_phrase.title()
