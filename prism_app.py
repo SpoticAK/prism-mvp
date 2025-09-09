@@ -5,7 +5,7 @@ import re
 import math
 import urllib.parse
 import random
-from item_identifier import ItemIdentifier # Import our new engine
+from item_identifier import ItemIdentifier
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -87,10 +87,9 @@ def load_data(csv_path):
         df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
         df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         
-        # --- INTEGRATION: Use the ItemIdentifier Engine ---
+        # Use the ItemIdentifier Engine
         identifier = ItemIdentifier()
         df['Identified Item'] = df['Title'].apply(identifier.identify)
-        # --- END INTEGRATION ---
 
         return df
     except FileNotFoundError:
@@ -149,6 +148,7 @@ with col1:
         st.rerun()
 
 with col2:
+    # Restored the full product title to its prominent position
     title = current_product.get('Title', 'No Title Available')
     st.markdown(f"### {title}")
     
@@ -161,10 +161,7 @@ with col2:
     sales = clean_sales_text(current_product.get('Monthly Sales', 'N/A'))
     rating_str = get_rating_stars(current_product.get('Ratings', 'N/A'))
     reviews = current_product.get('Review', 0)
-    
-    # NEW: Display the Identified Item
     identified_item = current_product.get('Identified Item', 'N/A')
-    st.metric(label="Identified Item", value=identified_item)
 
     metric_col1, metric_col2 = st.columns(2)
     metric_col1.metric(label="Price", value=f"₹{price:,.0f}")
@@ -177,4 +174,5 @@ with col2:
     st.divider()
 
     st.subheader("PRISM Analysis (Coming Soon)")
-    st.info(f"The 'PRISM Score' for **{identified_item}** will appear here.")
+    # Moved "Identified Item" here for a cleaner layout
+    st.info(f"**Identified Item:** {identified_item}\n\nThe full 'PRISM Score' will appear here.")
