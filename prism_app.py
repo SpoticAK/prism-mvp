@@ -15,12 +15,13 @@ st.set_page_config(
 def clean_sales_value(sale_entry):
     """
     A robust function to clean a single sales data entry.
-    Handles formats like '500+', '3K+', '1,939', and empty/non-string values.
+    Handles formats like '500+', '3K+', '1,939', and empty values.
     """
-    if pd.isna(sale_entry) or not isinstance(sale_entry, str):
+    # This function now safely assumes it will receive a string, due to the dtype setting below.
+    if pd.isna(sale_entry):
         return 0
     
-    s = str(sale_entry).lower().strip().split(' ')[0]
+    s = sale_entry.lower().strip().split(' ')[0]
     s = s.replace(',', '').replace('+', '')
     
     value = 0
@@ -44,9 +45,14 @@ def load_and_process_data():
     file_path = "products.csv"
     url = f"https://raw.githubusercontent.com/{github_user}/{repo_name}/main/{file_path}"
     
-    df = pd.read_csv(url)
+    # CRITICAL FIX: Read the 'Monthly Sales' column as a string to prevent type errors.
+    # This is the primary fix for the "concatenate" error.
+    df = pd.read_csv(url, dtype={'Monthly Sales': str})
+    
+    # Apply the robust cleaning function to the 'Monthly Sales' column
     df['Cleaned Sales'] = df['Monthly Sales'].apply(clean_sales_value)
     
+    # Initialize and run the Item Identifier
     identifier = ItemIdentifier()
     df['Identified Item'] = df['Title'].apply(identifier.identify)
     
