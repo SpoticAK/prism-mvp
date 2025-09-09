@@ -1,8 +1,10 @@
+# File: prism_app.py
 import streamlit as st
 import pandas as pd
 import re
 import math
 import urllib.parse
+import random # Import the 'random' library for shuffling
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -106,41 +108,46 @@ def clean_sales_text(sales_text: str) -> str:
     return sales_text.split(" ")[0]
 
 def generate_amazon_link(title: str) -> str:
-    """NEW: Creates a dynamic Amazon search link from a product title."""
+    """Creates a dynamic Amazon search link from a product title."""
     base_url = "https://www.amazon.in/s?k="
-    # URL-encode the title to handle spaces and special characters
     search_query = urllib.parse.quote_plus(title)
     return f"{base_url}{search_query}"
 
 # --- Session State Initialization ---
-if 'product_index' not in st.session_state:
-    st.session_state.product_index = 0
+df = load_data('products.csv')
+
+# NEW: Create and store a shuffled list of indices on the first run
+if 'shuffled_indices' not in st.session_state:
+    indices = list(df.index)
+    random.shuffle(indices)
+    st.session_state.shuffled_indices = indices
+    st.session_state.product_pointer = 0
 
 # --- App Header ---
 st.title("PRISM")
 st.markdown("Product Research & Insight System")
-
-df = load_data('products.csv')
-st.caption(f"Loaded {len(df)} products for analysis.")
+st.caption(f"Loaded and shuffled {len(df)} products for discovery.")
 st.divider()
 
 # --- Dashboard Layout ---
-current_product = df.iloc[st.session_state.product_index]
+# Use the pointer to get the current shuffled index
+current_index = st.session_state.shuffled_indices[st.session_state.product_pointer]
+current_product = df.iloc[current_index]
+
 col1, col2 = st.columns([1, 1.5], gap="large")
 
 with col1:
     st.image(current_product.get('Image', ''), use_container_width=True)
     
-    # MOVED: The "Next Product" button is now here for easier access.
     if st.button("Discover Next Product →", use_container_width=True):
-        st.session_state.product_index = (st.session_state.product_index + 1) % len(df)
-        st.rerun() # Rerun the script to immediately show the next product
+        # Move to the next product in the shuffled list
+        st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
+        st.rerun()
 
 with col2:
     title = current_product.get('Title', 'No Title Available')
     st.markdown(f"### {title}")
-
-    # NEW: Generate the Amazon link and create a link button.
+    
     amazon_url = generate_amazon_link(title)
     st.link_button("View on Amazon ↗", url=amazon_url, use_container_width=True)
     
