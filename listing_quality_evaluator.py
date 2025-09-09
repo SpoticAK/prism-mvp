@@ -1,45 +1,51 @@
 # File: listing_quality_evaluator.py
+import streamlit as st
 import requests
-from PIL import Image
-from io import BytesIO
-import re
+import cv2
+import numpy as np
 
-class ListingQualityEvaluator: # Renamed class
+class ListingQualityEvaluator:
     """
-    Analyzes a product listing to generate a quality score based on its properties.
+    Analyzes a product image to determine the area covered by the main object.
     """
-    def __init__(self):
-        self._thumbnail_pattern = re.compile(r'._AC_UL\d+_')
-
-    def get_score(self, image_url: str) -> int:
+    @st.cache_data
+    def get_score(_self, image_url: str) -> str:
         """
-        Takes an image URL and returns a Listing Quality Score (0-100).
+        Takes an image URL and returns a quality rating: Poor, Average, or Good.
         """
         if not isinstance(image_url, str) or not image_url:
-            return 0
-
-        if "no-image" in image_url or "placeholder" in image_url:
-            return 0
-
-        score = 50
-        if self._thumbnail_pattern.search(image_url):
-            score -= 20
+            return "Error"
 
         try:
+            # 1. Download the image
             headers = {'User-Agent': 'Mozilla/5.0'}
-            response = requests.get(image_url, stream=True, timeout=5, headers=headers)
+            response = requests.get(image_url, timeout=10, headers=headers)
             response.raise_for_status()
-
-            image = Image.open(BytesIO(response.content))
-            width, height = image.size
-
-            if width >= 500 and height >= 500:
-                score += 30
-            elif width >= 300 and height >= 300:
-                score += 15
+            
+            # 2. Load image with OpenCV
+            image_array = np.frombuffer(response.content, np.uint8)
+            img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+            
+            # Convert to grayscale for easier processing
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            
+            # 3. Isolate the object from the white background
+            # This creates a binary mask: black for background, white for the object
+            _, thresh = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
+            
+            # 4. Calculate the area
+            object_pixels = cv2.countNonZero(thresh)
+            total_pixels = img.shape[0] * img.shape[1]
+            coverage_percentage = (object_pixels / total_pixels) * 100
+            
+            # 5. Assign score based on your logic
+            if coverage_percentage > 70:
+                return "Good"
+            elif coverage_percentage >= 50:
+                return "Average"
             else:
-                score -= 10
-        except (requests.exceptions.RequestException, IOError):
-            return 10
+                return "Poor"
 
-        return max(0, min(100, score))
+        except Exception:
+            # If any step fails, return an error status
+            return "Error"
