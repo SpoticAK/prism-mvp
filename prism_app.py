@@ -5,7 +5,7 @@ import re
 import math
 import urllib.parse
 import random
-from item_identifier import ItemIdentifier # Make sure this import is present
+from item_identifier import ItemIdentifier
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -87,10 +87,9 @@ def load_data(csv_path):
         df['Price'] = pd.to_numeric(df['Price'], errors='coerce').fillna(0)
         df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce').fillna(0)
         
-        # --- INTEGRATION: Use the ItemIdentifier Engine ---
         identifier = ItemIdentifier()
         df['Identified Item'] = df['Title'].apply(identifier.identify)
-        
+
         return df
     except FileNotFoundError:
         st.error(f"File not found: {csv_path}. Please ensure 'products.csv' is in your GitHub repository.")
