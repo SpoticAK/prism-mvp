@@ -1,8 +1,7 @@
 # File: prism_app.py
 import streamlit as st
 import pandas as pd
-import re
-from item_identifier import ItemIdentifier
+# We will add 'from item_identifier import ItemIdentifier' later
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -11,88 +10,64 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Data Cleaning & Processing ---
-def clean_sales_value(sale_entry):
-    """
-    A robust function to clean a single sales data entry.
-    Handles formats like '500+', '3K+', '1,939', and empty values.
-    """
-    # This function now safely assumes it will receive a string, due to the dtype setting below.
-    if pd.isna(sale_entry):
-        return 0
-    
-    s = sale_entry.lower().strip().split(' ')[0]
-    s = s.replace(',', '').replace('+', '')
-    
-    value = 0
-    try:
-        if 'k' in s:
-            value = float(s.replace('k', '')) * 1000
-        else:
-            numeric_part = re.sub(r'[^\d.]', '', s)
-            if numeric_part:
-                value = float(numeric_part)
-    except (ValueError, TypeError):
-        return 0 # Default to 0 if any conversion fails
-            
-    return int(value)
-
-@st.cache_data
+# --- (Part 2: The Factory) ---
+# This is the placeholder for our data loading and processing function.
+# We will build this out in the next step.
 def load_and_process_data():
-    """Loads data from GitHub and performs all cleaning and processing."""
-    github_user = "spoticak"
-    repo_name = "prism-mvp"
-    file_path = "products.csv"
-    url = f"https://raw.githubusercontent.com/{github_user}/{repo_name}/main/{file_path}"
-    
-    # CRITICAL FIX: Read the 'Monthly Sales' column as a string to prevent type errors.
-    # This is the primary fix for the "concatenate" error.
-    df = pd.read_csv(url, dtype={'Monthly Sales': str})
-    
-    # Apply the robust cleaning function to the 'Monthly Sales' column
-    df['Cleaned Sales'] = df['Monthly Sales'].apply(clean_sales_value)
-    
-    # Initialize and run the Item Identifier
-    identifier = ItemIdentifier()
-    df['Identified Item'] = df['Title'].apply(identifier.identify)
-    
-    return df
+    """Loads, cleans, and processes the product data."""
+    # For now, we'll return an empty DataFrame to keep the app running.
+    # In the next step, we'll add the logic to load from GitHub.
+    return pd.DataFrame()
 
-# --- Main App ---
-st.title("PRISM: Product Intelligence & Sales Monitoring")
-
-try:
-    with st.spinner("Loading and analyzing data from your repository..."):
-        df = load_and_process_data()
-
-    st.success("Dashboard generated from `products.csv` in your repository.")
+# --- (Part 3: The Dashboard) ---
+def display_dashboard(df):
+    """Takes a clean DataFrame and displays the entire dashboard."""
+    
+    st.title("PRISM: Product Intelligence & Sales Monitoring")
 
     # --- Key Metrics ---
-    total_sales = df['Cleaned Sales'].sum()
-    average_price = df['Price'].mean()
-    unique_items = df['Identified Item'].nunique()
-
+    st.header("Dashboard Summary")
     col1, col2, col3 = st.columns(3)
-    col1.metric("Total Monthly Sales", f"{total_sales:,}")
-    col2.metric("Average Product Price", f"₹{average_price:,.2f}")
-    col3.metric("Unique Items Identified", f"{unique_items}")
+    with col1:
+        st.metric("Total Monthly Sales", "...")
+    with col2:
+        st.metric("Average Product Price", "...")
+    with col3:
+        st.metric("Unique Items Identified", "...")
 
     st.markdown("---")
 
     # --- Charts ---
+    st.header("Visualizations")
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("Top 10 Products by Sales")
-        st.bar_chart(df.nlargest(10, 'Cleaned Sales'), x='Title', y='Cleaned Sales')
+        # Placeholder for the chart
+        st.write("Chart will be displayed here.")
     with col2:
         st.subheader("Top 10 Identified Items by Sales")
-        st.bar_chart(df.groupby('Identified Item')['Cleaned Sales'].sum().nlargest(10))
+        # Placeholder for the chart
+        st.write("Chart will be displayed here.")
     
     st.markdown("---")
 
     # --- Data Table ---
-    st.subheader("Processed Data")
-    st.dataframe(df[['Title', 'Identified Item', 'Price', 'Cleaned Sales']])
+    st.header("Processed Data")
+    st.write("The full processed data table will be shown here.")
+    # st.dataframe(df) # We'll uncomment this when we have data
 
-except Exception as e:
-    st.error(f"An error occurred: {e}")
+# --- Main App Execution ---
+def main():
+    """The main function that runs the Streamlit app."""
+    try:
+        # Step 1: Load and process the data using our "Factory"
+        processed_df = load_and_process_data()
+
+        # Step 2: Display the dashboard using our "Showroom"
+        display_dashboard(processed_df)
+
+    except Exception as e:
+        st.error(f"An error occurred in the main application: {e}")
+
+if __name__ == "__main__":
+    main()
