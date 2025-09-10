@@ -5,8 +5,9 @@ import re
 import math
 import urllib.parse
 import random
-from item_identifier import ItemIdentifier
-from listing_quality_evaluator import ListingQualityEvaluator
+import requests
+import cv2
+import numpy as np
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -52,13 +53,79 @@ hr { background-color: #EAEAEA; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- Scoring Engine ---
+# --- Engine #1: Item Identifier ---
+class ItemIdentifier:
+    def __init__(self):
+        self._noise_words = {
+            'stylish', 'comfortable', 'premium', 'high', 'quality', 'heavy', 'duty',
+            'waterproof', 'convertible', 'streachable', 'full', 'loose', 'relaxed',
+            'retractable', 'handheld', 'rechargeable', 'portable', 'soft', 'stretchy',
+            'cushioned', 'breathable', 'sturdy', 'micronized', 'new', 'complete',
+            "men's", "women's", "boy's", "girl's", 'mens', 'womens', 'men',
+            'women', 'kids', 'man', 'woman', 'boys', 'girls', 'unisex', 'adult',
+            'home', 'gym', 'workout', 'exercise', 'training', 'gear', 'for',
+            'accessories', 'powerlifting', 'solid', 'combo', 'kit', 'pack', 'set',
+            'pcs', 'of', 'gram', 'serves', 'piece', 'pieces', 'anti', 'slip', 'multi',
+            'with', 'and', 'the', 'a', 'in', 'per', 'ideal', 'everyday', 'use',
+            'black', 'white', 'red', 'blue', 'green', 'multicolor',
+            'large', 'medium', 'small', 'size', 'fit',
+            'fitness', 'toning', 'band', 'bands', 'cover', 'support'
+        }
+        self._spec_pattern = re.compile(r'\b(\d+l|\d+ml|\d+mm|\d+g|\d+kg)\b', re.IGNORECASE)
+
+    def identify(self, title: str) -> str:
+        if not isinstance(title, str): return "Not Found"
+        limit = 50
+        if len(title) > limit:
+            next_space = title.find(' ', limit)
+            golden_zone = title[:next_space] if next_space != -1 else title[:limit]
+        else:
+            golden_zone = title
+        
+        sanitized_zone = golden_zone.lower().replace("'s", "")
+        cleaned_zone = self._spec_pattern.sub('', sanitized_zone)
+        words = re.findall(r'\b[a-zA-Z-]+\b', cleaned_zone)
+        
+        if not words: return "Not Found"
+            
+        candidate_words = words[1:] if len(words) > 1 else words
+        item_words = [w for w in candidate_words if w not in self._noise_words]
+
+        if not item_words: return "Not Found"
+        
+        return " ".join(item_words).title()
+
+# --- Engine #2: Listing Quality Evaluator ---
+class ListingQualityEvaluator:
+    @st.cache_data
+    def get_score(_self, image_url: str) -> str:
+        if not isinstance(image_url, str) or not image_url: return "Error"
+        try:
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(image_url, timeout=10, headers=headers)
+            response.raise_for_status()
+            
+            image_array = np.frombuffer(response.content, np.uint8)
+            img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+            
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
+            
+            object_pixels = cv2.countNonZero(thresh)
+            total_pixels = img.shape[0] * img.shape[1]
+            coverage_percentage = (object_pixels / total_pixels) * 100
+            
+            if coverage_percentage > 70: return "Good"
+            elif coverage_percentage >= 50: return "Average"
+            else: return "Poor"
+        except Exception:
+            return "Error"
+
+# --- Engine #3: PRISM Score Evaluator ---
 class PrismScoreEvaluator:
     def get_score(self, product_data: pd.Series) -> (int, str, bool):
-        points_earned = 0
-        points_available = 15
-        missing_data = False
-
+        points_earned, points_available, missing_data = 0, 15, False
+        
         price = product_data.get('Price')
         if pd.notna(price):
             if 200 <= price <= 350: points_earned += 4
@@ -72,7 +139,6 @@ class PrismScoreEvaluator:
             else: points_earned += 1
         else: points_available -= 3; missing_data = True
             
-        # CRITICAL FIX: Use the clean 'Ratings_Num' column for comparison
         rating = product_data.get('Ratings_Num')
         if pd.notna(rating):
             if rating >= 4.2: points_earned += 3
@@ -101,34 +167,27 @@ class PrismScoreEvaluator:
             
         return final_score, potential_label, missing_data
 
-# --- Helper Functions ---
+# --- Data Loading and Processing ---
 @st.cache_data
 def load_and_process_data(csv_path):
-    try:
-        df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
-        
-        # Clean and prepare data for scoring and display
-        df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
-        df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
-        df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
-        
-        # --- Run Engines ---
-        item_engine = ItemIdentifier()
-        quality_engine = ListingQualityEvaluator()
-        score_engine = PrismScoreEvaluator()
-        
-        df['Identified Item'] = df['Title'].apply(item_engine.identify)
-        df['Listing Quality'] = df['Image'].apply(quality_engine.get_score)
-        
-        scores = df.apply(score_engine.get_score, axis=1)
-        df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
+    df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
+    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+    df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
+    df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
+    df['Cleaned Sales'] = df['Monthly Sales'].apply(lambda s: int(re.sub(r'\D', '', s.replace('K+', '000'))) if isinstance(s, str) else 0)
+    
+    item_engine = ItemIdentifier()
+    quality_engine = ListingQualityEvaluator()
+    score_engine = PrismScoreEvaluator()
+    
+    df['Identified Item'] = df['Title'].apply(item_engine.identify)
+    df['Listing Quality'] = df['Image'].apply(quality_engine.get_score)
+    
+    scores = df.apply(score_engine.get_score, axis=1)
+    df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
+    return df
 
-        return df
-    except FileNotFoundError:
-        st.error(f"File not found: {csv_path}. Please ensure 'products.csv' is in your GitHub repository.")
-        st.stop()
-
-# (Other helper functions remain unchanged)
+# --- UI Helper Functions ---
 def get_rating_stars(rating_text: str) -> str:
     if not isinstance(rating_text, str): return "N/A"
     match = re.search(r'(\d\.\d)', rating_text)
@@ -149,8 +208,12 @@ def generate_amazon_link(title: str) -> str:
     search_query = urllib.parse.quote_plus(title)
     return f"{base_url}{search_query}"
 
-# --- Session State & App Initialization ---
+# --- Main App Execution ---
+st.title("PRISM")
+st.markdown("Product Research & Insight System")
 df = load_data('products.csv')
+st.caption(f"Loaded and shuffled {len(df)} products for discovery.")
+st.divider()
 
 if 'shuffled_indices' not in st.session_state:
     indices = list(df.index)
@@ -158,13 +221,6 @@ if 'shuffled_indices' not in st.session_state:
     st.session_state.shuffled_indices = indices
     st.session_state.product_pointer = 0
 
-# --- App Header ---
-st.title("PRISM")
-st.markdown("Product Research & Insight System")
-st.caption(f"Loaded and shuffled {len(df)} products for discovery.")
-st.divider()
-
-# --- Dashboard Layout ---
 current_index = st.session_state.shuffled_indices[st.session_state.product_pointer]
 current_product = df.iloc[current_index]
 
@@ -177,35 +233,24 @@ with col1:
         st.rerun()
 
 with col2:
-    title = current_product.get('Title', 'No Title Available')
-    st.markdown(f"### {title}")
-    amazon_url = generate_amazon_link(title)
-    st.link_button("View on Amazon ↗", url=amazon_url, use_container_width=True)
+    st.markdown(f"### {current_product.get('Title', 'No Title Available')}")
+    st.link_button("View on Amazon ↗", url=generate_amazon_link(current_product.get('Title', '')), use_container_width=True)
     st.markdown("---")
     
-    price = current_product.get('Price', 0)
-    sales = clean_sales_text(current_product.get('Monthly Sales', 'N/A'))
-    rating_str = get_rating_stars(current_product.get('Ratings', 'N/A'))
-    reviews = current_product.get('Review', 0)
-    identified_item = current_product.get('Identified Item', 'N/A')
-    quality_score = current_product.get('Listing Quality', 'N/A')
-    prism_score = current_product.get('PRISM Score', 0)
-    potential = current_product.get('Potential', 'Low Potential')
-    missing_data = current_product.get('Missing Data', False)
-
     metric_col1, metric_col2 = st.columns(2)
-    metric_col1.metric(label="Price", value=f"₹{price:,.0f}")
-    metric_col2.metric(label="Monthly Sales", value=sales)
+    metric_col1.metric(label="Price", value=f"₹{current_product.get('Price', 0):,.0f}")
+    metric_col2.metric(label="Monthly Sales", value=clean_sales_text(current_product.get('Monthly Sales', 'N/A')))
     
     st.markdown("### Rating")
-    st.markdown(f"<h2 style='color: #212121; font-weight: 600;'>{rating_str}</h2>", unsafe_allow_html=True)
-    st.markdown(f"Based on **{int(reviews):,}** reviews.")
+    st.markdown(f"<h2 style='color: #212121; font-weight: 600;'>{get_rating_stars(current_product.get('Ratings', 'N/A'))}</h2>", unsafe_allow_html=True)
+    st.markdown(f"Based on **{int(current_product.get('Review', 0)):,}** reviews.")
     st.divider()
 
     st.subheader("PRISM Analysis")
+    potential = current_product.get('Potential', 'Low Potential')
     potential_class = potential.lower().replace(" ", "-")
     
-    st.metric(label="PRISM Score", value=f"{prism_score}/100")
+    st.metric(label="PRISM Score", value=f"{current_product.get('PRISM Score', 0)}/100")
     st.markdown(f"<div class='potential-label {potential_class}'>{potential}</div>", unsafe_allow_html=True)
-    if missing_data:
+    if current_product.get('Missing Data', False):
         st.markdown("<div class='missing-data-flag'>*Score calculated with some data unavailable.</div>", unsafe_allow_html=True)
