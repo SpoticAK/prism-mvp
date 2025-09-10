@@ -47,7 +47,7 @@ hr { background-color: #EAEAEA; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- Data Loading and Helper Functions ---
+# --- Helper Functions ---
 @st.cache_data
 def load_and_process_data(csv_path):
     df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
@@ -90,65 +90,66 @@ def generate_amazon_link(title: str):
     return f"{base_url}{search_query}"
 
 # --- Main App Execution ---
-st.title("PRISM")
-st.markdown("Product Research & Insight System")
-df = load_data('products.csv')
-st.caption(f"Loaded and shuffled {len(df)} products for discovery.")
-st.divider()
-
-if 'shuffled_indices' not in st.session_state:
-    indices = list(df.index)
-    random.shuffle(indices)
-    st.session_state.shuffled_indices = indices
-    st.session_state.product_pointer = 0
-
-current_index = st.session_state.shuffled_indices[st.session_state.product_pointer]
-current_product = df.iloc[current_index]
-
-col1, col2 = st.columns([1, 1.5], gap="large")
-
-with col1:
-    st.image(current_product.get('Image', ''), use_container_width=True)
-    if st.button("Discover Next Product →", use_container_width=True):
-        st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
-        st.rerun()
-
-with col2:
-    st.markdown(f"### {current_product.get('Title', 'No Title Available')}")
-    st.link_button("View on Amazon ↗", url=generate_amazon_link(current_product.get('Title', '')), use_container_width=True)
-    st.markdown("---")
-    
-    metric_col1, metric_col2 = st.columns(2)
-    metric_col1.metric(label="Price", value=f"₹{current_product.get('Price', 0):,.0f}")
-    metric_col2.metric(label="Monthly Sales", value=clean_sales_text(current_product.get('Monthly Sales', 'N/A')))
-    
-    st.markdown("### Rating")
-    st.markdown(f"<h2 style='color: #212121; font-weight: 600;'>{get_rating_stars(current_product.get('Ratings', 'N/A'))}</h2>", unsafe_allow_html=True)
-    st.markdown(f"Based on **{int(current_product.get('Review', 0)):,}** reviews.")
+def main():
+    st.title("PRISM")
+    st.markdown("Product Research & Insight System")
+    df = load_and_process_data('products.csv')
+    st.caption(f"Loaded and shuffled {len(df)} products for discovery.")
     st.divider()
 
-    st.subheader("PRISM Analysis")
-    potential = current_product.get('Potential', 'Low Potential')
-    potential_class = potential.lower().replace(" ", "-")
-    prism_score = int(current_product.get('PRISM Score', 0))
+    if 'shuffled_indices' not in st.session_state:
+        indices = list(df.index)
+        random.shuffle(indices)
+        st.session_state.shuffled_indices = indices
+        st.session_state.product_pointer = 0
 
-    # --- UPDATED: Visual Score Bar ---
-    st.markdown("**PRISM Score**")
-    score_bar_col, score_text_col = st.columns([4, 1])
-    with score_bar_col:
-        st.progress(prism_score / 100.0)
-    with score_text_col:
-        st.markdown(f"<div class='score-text'>{prism_score}/100</div>", unsafe_allow_html=True)
-    
-    # --- UPDATED: Display Engine Outputs ---
-    st.markdown(f"""
-    <div class='analysis-details'>
-        <b>Identified Item:</b> {current_product.get('Identified Item', 'N/A')}<br>
-        <b>Listing Quality:</b> {current_product.get('Listing Quality', 'N/A')}
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown(f"<div class='potential-label {potential_class}' style='margin-top: 10px;'>{potential}</div>", unsafe_allow_html=True)
-    if current_product.get('Missing Data', False):
-        st.markdown("<div class='missing-data-flag'>*Score calculated with some data unavailable.</div>", unsafe_allow_html=True)
+    current_index = st.session_state.shuffled_indices[st.session_state.product_pointer]
+    current_product = df.iloc[current_index]
+
+    col1, col2 = st.columns([1, 1.5], gap="large")
+
+    with col1:
+        st.image(current_product.get('Image', ''), use_container_width=True)
+        if st.button("Discover Next Product →", use_container_width=True):
+            st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
+            st.rerun()
+
+    with col2:
+        st.markdown(f"### {current_product.get('Title', 'No Title Available')}")
+        st.link_button("View on Amazon ↗", url=generate_amazon_link(current_product.get('Title', '')), use_container_width=True)
+        st.markdown("---")
         
+        metric_col1, metric_col2 = st.columns(2)
+        metric_col1.metric(label="Price", value=f"₹{current_product.get('Price', 0):,.0f}")
+        metric_col2.metric(label="Monthly Sales", value=clean_sales_text(current_product.get('Monthly Sales', 'N/A')))
+        
+        st.markdown("### Rating")
+        st.markdown(f"<h2 style='color: #212121; font-weight: 600;'>{get_rating_stars(current_product.get('Ratings', 'N/A'))}</h2>", unsafe_allow_html=True)
+        st.markdown(f"Based on **{int(current_product.get('Review', 0)):,}** reviews.")
+        st.divider()
+
+        st.subheader("PRISM Analysis")
+        potential = current_product.get('Potential', 'Low Potential')
+        potential_class = potential.lower().replace(" ", "-")
+        prism_score = int(current_product.get('PRISM Score', 0))
+
+        st.markdown("**PRISM Score**")
+        score_bar_col, score_text_col = st.columns([4, 1])
+        with score_bar_col:
+            st.progress(prism_score / 100.0)
+        with score_text_col:
+            st.markdown(f"<div class='score-text'>{prism_score}/100</div>", unsafe_allow_html=True)
+        
+        st.markdown(f"""
+        <div class='analysis-details'>
+            <b>Identified Item:</b> {current_product.get('Identified Item', 'N/A')}<br>
+            <b>Listing Quality:</b> {current_product.get('Listing Quality', 'N/A')}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown(f"<div class='potential-label {potential_class}' style='margin-top: 10px;'>{potential}</div>", unsafe_allow_html=True)
+        if current_product.get('Missing Data', False):
+            st.markdown("<div class='missing-data-flag'>*Score calculated with some data unavailable.</div>", unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    main()
