@@ -22,8 +22,7 @@ def load_and_process_data(csv_path):
     df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
     df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
     df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
-    df['Cleaned Sales'] = df['Monthly Sales'].apply(lambda s: int(re.sub(r'\D', '', s.replace('k+', '000'))) if isinstance(s, str) and s else 0)
-    
+    df['Cleaned Sales'] = df['Monthly Sales'].str.lower().str.replace('k', '000').str.extract(r'(\d+)').astype(float).fillna(0).astype(int)    
     item_engine = ItemIdentifier()
     quality_engine = ListingQualityEvaluator()
     score_engine = PrismScoreEvaluator()
