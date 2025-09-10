@@ -43,6 +43,8 @@ div[data-testid="stMetric"] > label { font-size: 0.9rem; color: #555555; }
 div[data-testid="stMetric"] > div { font-size: 1.75rem; font-weight: 600; }
 .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
 hr { background-color: #EAEAEA; }
+
+/* NEW: Styles for the PRISM Analysis Section */
 .potential-label {
     padding: 4px 12px; border-radius: 8px; font-weight: 600; font-size: 1rem; display: inline-block;
 }
@@ -50,6 +52,9 @@ hr { background-color: #EAEAEA; }
 .moderate-potential { background-color: #fff3cd; color: #856404; }
 .low-potential { background-color: #f8d7da; color: #721c24; }
 .missing-data-flag { font-size: 0.8rem; color: #6c757d; padding-top: 5px; }
+.score-bar-container { display: flex; align-items: center; gap: 10px; }
+.score-text { font-size: 1rem; font-weight: 600; color: #555555; }
+.analysis-details { margin-top: 1rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -174,8 +179,6 @@ def load_and_process_data(csv_path):
     df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
     df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
     df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
-    
-    # Correctly handle and clean the 'Monthly Sales' column
     df['Cleaned Sales'] = df['Monthly Sales'].apply(lambda s: int(re.sub(r'\D', '', s.replace('K+', '000'))) if isinstance(s, str) and s else 0)
     
     item_engine = ItemIdentifier()
@@ -251,8 +254,24 @@ with col2:
     st.subheader("PRISM Analysis")
     potential = current_product.get('Potential', 'Low Potential')
     potential_class = potential.lower().replace(" ", "-")
+    prism_score = current_product.get('PRISM Score', 0)
+
+    # --- NEW: Visual Score Bar ---
+    st.markdown("**PRISM Score**")
+    score_bar_col, score_text_col = st.columns([4, 1])
+    with score_bar_col:
+        st.progress(prism_score)
+    with score_text_col:
+        st.markdown(f"<div class='score-text'>{prism_score}/100</div>", unsafe_allow_html=True)
     
-    st.metric(label="PRISM Score", value=f"{current_product.get('PRISM Score', 0)}/100")
-    st.markdown(f"<div class='potential-label {potential_class}'>{potential}</div>", unsafe_allow_html=True)
+    # --- NEW: Display Engine Outputs ---
+    st.markdown(f"""
+    <div class='analysis-details'>
+        <b>Identified Item:</b> {current_product.get('Identified Item', 'N/A')}<br>
+        <b>Listing Quality:</b> {current_product.get('Listing Quality', 'N/A')}
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown(f"<div class='potential-label {potential_class}' style='margin-top: 10px;'>{potential}</div>", unsafe_allow_html=True)
     if current_product.get('Missing Data', False):
         st.markdown("<div class='missing-data-flag'>*Score calculated with some data unavailable.</div>", unsafe_allow_html=True)
