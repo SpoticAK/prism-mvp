@@ -174,7 +174,9 @@ def load_and_process_data(csv_path):
     df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
     df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
     df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
-    df['Cleaned Sales'] = df['Monthly Sales'].apply(lambda s: int(re.sub(r'\D', '', s.replace('K+', '000'))) if isinstance(s, str) else 0)
+    
+    # Correctly handle and clean the 'Monthly Sales' column
+    df['Cleaned Sales'] = df['Monthly Sales'].apply(lambda s: int(re.sub(r'\D', '', s.replace('K+', '000'))) if isinstance(s, str) and s else 0)
     
     item_engine = ItemIdentifier()
     quality_engine = ListingQualityEvaluator()
@@ -211,7 +213,7 @@ def generate_amazon_link(title: str) -> str:
 # --- Main App Execution ---
 st.title("PRISM")
 st.markdown("Product Research & Insight System")
-df = load_data('products.csv')
+df = load_and_process_data('products.csv')
 st.caption(f"Loaded and shuffled {len(df)} products for discovery.")
 st.divider()
 
