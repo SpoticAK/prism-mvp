@@ -31,17 +31,20 @@ class PrismScoreEvaluator:
             elif quality == 'Average': points_earned += 1
         else: points_available -= 2; missing_data = True
             
+        # --- UPDATED: New Monthly Sales Logic ---
         sales = product_data.get('Cleaned Sales')
         if pd.notna(sales):
-            if sales >= 1000: points_earned += 3
-            elif 300 <= sales < 1000: points_earned += 2
-            elif 100 <= sales < 300: points_earned += 1
+            if sales >= 500: points_earned += 3
+            elif 100 <= sales <= 499: points_earned += 2
+            else: # Below 100
+                points_earned += 1
         else: points_available -= 3; missing_data = True
 
         final_score = int((points_earned / points_available) * 100) if points_available > 0 else 0
             
+        # --- UPDATED: New Potential Threshold ---
         if final_score > 80: potential_label = "High Potential"
-        elif final_score >= 70: potential_label = "Moderate Potential"
+        elif final_score >= 66: potential_label = "Moderate Potential"
         else: potential_label = "Low Potential"
             
         return final_score, potential_label, missing_data
