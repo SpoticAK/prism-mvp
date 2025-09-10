@@ -5,18 +5,14 @@ class PrismScoreEvaluator:
     def get_score(self, product_data: pd.Series) -> (int, str, bool):
         points_earned, points_available, missing_data = 0, 15, False
         
-        # --- UPDATED: New Price Scoring Logic (Max 4 points) ---
+        # --- Price Scoring (Max 4 points) ---
         price = product_data.get('Price')
         if pd.notna(price):
-            if 200 <= price <= 350:
-                points_earned += 4
-            elif (175 <= price <= 199) or (price > 350): # Covers 175-199 AND anything above 350
-                points_earned += 2
-            elif price < 175:
-                points_earned += 1
+            if 200 <= price <= 350: points_earned += 4
+            elif (175 <= price <= 199) or (price > 350): points_earned += 2
+            elif price < 175: points_earned += 1
         else:
-            points_available -= 4
-            missing_data = True
+            points_available -= 4; missing_data = True
 
         # --- Review Count Scoring (Max 3 points) ---
         reviews = product_data.get('Review')
@@ -41,14 +37,20 @@ class PrismScoreEvaluator:
             elif quality == 'Average' or quality == 'Good': points_earned += 1
         else: points_available -= 2; missing_data = True
             
-        # --- Monthly Sales Scoring (Max 3 points) ---
-        sales = product_data.get('Cleaned Sales')
-        if pd.notna(sales):
-            if sales >= 500: points_earned += 3
-            elif 100 <= sales <= 499: points_earned += 2
+        # --- CORRECTED: Monthly Sales Scoring (Max 3 points) ---
+        original_sales = product_data.get('Monthly Sales')
+        cleaned_sales = product_data.get('Cleaned Sales')
+
+        # First, check if the original data was actually missing.
+        if pd.isna(original_sales) or original_sales.strip().lower() == 'n/a':
+            points_available -= 3
+            missing_data = True
+        else:
+            # If data was present, score based on the cleaned number.
+            if cleaned_sales >= 500: points_earned += 3
+            elif 100 <= cleaned_sales <= 499: points_earned += 2
             else: # Below 100
                 points_earned += 1
-        else: points_available -= 3; missing_data = True
 
         # --- Final Score Calculation ---
         final_score = int((points_earned / points_available) * 100) if points_available > 0 else 0
