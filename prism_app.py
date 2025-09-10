@@ -36,16 +36,15 @@ div[data-testid="stMetric"] > div { font-size: 1.75rem; font-weight: 600; }
 hr { background-color: #EAEAEA; }
 
 /* Sidebar Styling */
-.st-emotion-cache-17lntch img {
-    border-radius: 8px; border: 1px solid #EAEAEA;
-    width: 60px; height: 60px; object-fit: cover;
-}
 .sidebar-item-container {
     padding: 10px; border-radius: 10px; margin-bottom: 10px;
     background-color: #f9f9f9;
 }
 .sidebar-item-header {
     display: flex; align-items: center; justify-content: space-between;
+}
+.sidebar-item-header img {
+    width: 60px; height: 60px; border-radius: 8px; object-fit: cover;
 }
 .remove-btn {
     color: #aaa; border: none; background: none; font-size: 1.1rem; cursor: pointer;
@@ -72,15 +71,17 @@ hr { background-color: #EAEAEA; }
 # --- Data Loading and Helper Functions ---
 @st.cache_data
 def load_and_process_data(csv_path):
-    # This function is correct and remains unchanged.
-    df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
-    # Data cleaning and feature creation
+    try:
+        df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
+    except FileNotFoundError:
+        st.error(f"File not found: {csv_path}. Please ensure 'products.csv' is in your GitHub repository.")
+        return None
+
     df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
     df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
     df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
-    df['Cleaned Sales'] = df['Monthly Sales'].apply(lambda s: int(re.sub(r'\D', '', s.replace('k+', '000'))) if isinstance(s, str) and s else 0)
-    
-    # Instantiate and run all three engines
+    df['Cleaned Sales'] = df['Monthly Sales'].str.lower().str.replace('k', '000').str.extract(r'(\d+)').astype(float).fillna(0).astype(int)
+
     item_engine = ItemIdentifier()
     quality_engine = ListingQualityEvaluator()
     score_engine = PrismScoreEvaluator()
@@ -118,19 +119,17 @@ def main():
     st.markdown("Product Research & Insight System")
     
     df = load_and_process_data('products.csv')
-    if df is None: st.stop()
+    if df is None:
+        st.stop()
 
     st.caption(f"Loaded and shuffled {len(df)} products for discovery.")
     st.divider()
 
-    # --- Session State Initialization with URL Parameters ---
     if 'shuffled_indices' not in st.session_state:
         indices = list(df.index)
         random.shuffle(indices)
         st.session_state.shuffled_indices = indices
         st.session_state.product_pointer = 0
-        
-        # Read saved items and notes from URL on the very first run
         try:
             query_params = st.query_params.to_dict()
             st.session_state.saved_products = [int(i) for i in query_params.get("saved", [])]
@@ -139,7 +138,6 @@ def main():
              st.session_state.saved_products = []
              st.session_state.notes = {}
 
-    # --- Sidebar ---
     with st.sidebar:
         st.subheader("Your Shortlist")
         if not st.session_state.saved_products:
@@ -148,21 +146,20 @@ def main():
             for saved_index in st.session_state.saved_products[:]:
                 product = df.iloc[saved_index]
                 with st.container():
-                    st.markdown(f"<div class='sidebar-item-container'>", unsafe_allow_html=True)
-                    
-                    # Header with Image and Remove Button
+                    st.markdown("<div class='sidebar-item-container'>", unsafe_allow_html=True)
                     col1, col2 = st.columns([5, 1])
                     with col1:
                         st.image(product.get('Image'), width=60, caption=product.get('Title')[:25]+"...")
                     with col2:
                         if st.button("❌", key=f"remove_{saved_index}", help="Remove from shortlist"):
                             st.session_state.saved_products.remove(saved_index)
-                            del st.session_state.notes[saved_index]
+                            # CRITICAL FIX: Only delete the note if it exists
+                            if saved_index in st.session_state.notes:
+                                del st.session_state.notes[saved_index]
                             st.query_params["saved"] = [str(i) for i in st.session_state.saved_products]
                             st.query_params.pop(f"note_{saved_index}", None)
                             st.rerun()
                     
-                    # Note taking input
                     note_text = st.text_input("Add a note...", key=f"note_input_{saved_index}", value=st.session_state.notes.get(saved_index, ""))
                     if note_text != st.session_state.notes.get(saved_index, ""):
                         st.session_state.notes[saved_index] = note_text
@@ -177,7 +174,6 @@ def main():
                 st.query_params.clear()
                 st.rerun()
 
-    # --- Main Dashboard ---
     current_index = st.session_state.shuffled_indices[st.session_state.product_pointer]
     current_product = df.iloc[current_index]
 
@@ -220,12 +216,14 @@ def main():
         prism_score = int(current_product.get('PRISM Score', 0))
 
         st.markdown("**PRISM Score**")
-        with st.container():
-            score_bar_col, score_text_col = st.columns([4, 1])
-            with score_bar_col:
-                st.progress(float(prism_score) / 100.0)
-            with score_text_col:
-                st.markdown(f"<div class='score-text'>{prism_score}/100</div>", unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class="score-bar-container">
+                <div class="score-bar-background">
+                    <div class="score-bar-foreground" style="width: {prism_score}%;"></div>
+                </div>
+                <div class="score-text">{prism_score}/100</div>
+            </div>
+        """, unsafe_allow_html=True)
         
         st.markdown(f"<div class='potential-label {potential_class}'>{potential}</div>", unsafe_allow_html=True)
         st.markdown("---")
