@@ -34,6 +34,24 @@ div[data-testid="stMetric"] > label { font-size: 0.9rem; color: #555555; }
 div[data-testid="stMetric"] > div { font-size: 1.75rem; font-weight: 600; }
 .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
 hr { background-color: #EAEAEA; }
+
+/* Sidebar Styling - Made more compact */
+.st-emotion-cache-17lntch img {
+    border-radius: 8px; border: 1px solid #EAEAEA;
+    width: 60px; height: 60px; object-fit: cover; /* Reduced size slightly */
+}
+.sidebar-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px; border-radius: 10px; margin-bottom: 5px;
+    transition: background-color 0.2s;
+}
+.sidebar-item:hover { background-color: #f0f0f5; }
+.remove-btn {
+    color: #aaa; border: none; background: none; font-size: 1.1rem; cursor: pointer;
+}
+.remove-btn:hover { color: #ff4b4b; }
+
+/* Potential Label Styling */
 .potential-label {
     padding: 6px 14px; border-radius: 10px; font-weight: 700;
     font-size: 1.1rem; display: inline-block; text-align: center;
@@ -42,35 +60,20 @@ hr { background-color: #EAEAEA; }
 .moderate-potential { background-color: #fff3cd; color: #856404; }
 .low-potential { background-color: #f8d7da; color: #721c24; }
 .missing-data-flag { font-size: 0.8rem; color: #6c757d; padding-top: 5px; }
+
+/* NEW: Custom Score Bar Styles */
 .score-bar-container { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+.score-bar-background { background-color: #e9ecef; border-radius: 0.5rem; height: 10px; flex-grow: 1; }
+.score-bar-foreground { background-color: #007bff; height: 10px; border-radius: 0.5rem; }
 .score-text { font-size: 1rem; font-weight: 600; color: #555555; }
 .analysis-details { line-height: 1.8; }
-.sidebar-item {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 5px; border-radius: 10px; margin-bottom: 5px;
-    transition: background-color 0.2s;
-}
-.sidebar-item:hover { background-color: #f0f0f5; }
-.sidebar-item img {
-    width: 60px; height: 60px; border-radius: 8px; object-fit: cover; cursor: pointer;
-}
-.remove-btn {
-    color: #aaa; border: none; background: none; font-size: 1.1rem; cursor: pointer;
-    line-height: 1; padding: 5px;
-}
-.remove-btn:hover { color: #ff4b4b; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- Data Loading and Helper Functions ---
 @st.cache_data
 def load_and_process_data(csv_path):
-    try:
-        df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
-    except FileNotFoundError:
-        st.error(f"File not found: {csv_path}. Please ensure 'products.csv' is in your GitHub repository.")
-        return None # Return None if file is not found
-
+    df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
     # Data cleaning and feature creation
     df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
     df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
@@ -89,6 +92,7 @@ def load_and_process_data(csv_path):
     df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
     return df
 
+# (Other helper functions remain unchanged)
 def get_rating_stars(rating_text: str):
     if not isinstance(rating_text, str): return "N/A"
     match = re.search(r'(\d\.\d)', rating_text)
@@ -115,10 +119,7 @@ def main():
     st.markdown("Product Research & Insight System")
     
     df = load_and_process_data('products.csv')
-    
-    # CRITICAL FIX: Stop execution if the dataframe failed to load
-    if df is None:
-        st.stop()
+    if df is None: st.stop()
 
     st.caption(f"Loaded and shuffled {len(df)} products for discovery.")
     st.divider()
@@ -157,7 +158,7 @@ def main():
     current_index = st.session_state.shuffled_indices[st.session_state.product_pointer]
     current_product = df.iloc[current_index]
 
-    col1, col2 = st.columns([1, 1.5], gap="large")
+    col1, col2 = st.columns([2, 3], gap="large") # Adjusted main column ratio for a narrower "sidebar" feel
 
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
@@ -194,15 +195,18 @@ def main():
         potential_class = potential.lower().replace(" ", "-")
         prism_score = int(current_product.get('PRISM Score', 0))
 
+        # --- FIX: Custom Visual Score Bar ---
         st.markdown("**PRISM Score**")
-        with st.container():
-            score_bar_col, score_text_col = st.columns([4, 1])
-            with score_bar_col:
-                st.progress(float(prism_score) / 100.0)
-            with score_text_col:
-                st.markdown(f"<div class='score-text'>{prism_score}/100</div>", unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class="score-bar-container">
+                <div class="score-bar-background">
+                    <div class="score-bar-foreground" style="width: {prism_score}%;"></div>
+                </div>
+                <div class="score-text">{prism_score}/100</div>
+            </div>
+        """, unsafe_allow_html=True)
         
-        st.markdown(f"<div class='potential-label {potential_class}' style='margin-top: 10px;'>{potential}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='potential-label {potential_class}'>{potential}</div>", unsafe_allow_html=True)
         st.markdown("---")
         
         st.markdown(f"""
@@ -217,4 +221,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
