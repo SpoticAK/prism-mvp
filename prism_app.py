@@ -41,23 +41,22 @@ hr { background-color: #EAEAEA; }
 .moderate-potential { background-color: #fff3cd; color: #856404; }
 .low-potential { background-color: #f8d7da; color: #721c24; }
 .missing-data-flag { font-size: 0.8rem; color: #6c757d; padding-top: 5px; }
-.score-bar-container { display: flex; align-items: center; gap: 10px; }
+.score-bar-container { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
 .score-text { font-size: 1rem; font-weight: 600; color: #555555; }
-.analysis-details { margin-top: 1rem; line-height: 1.8; }
+.analysis-details { line-height: 1.8; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- Helper Functions ---
+# --- Data Loading and Helper Functions ---
 @st.cache_data
 def load_and_process_data(csv_path):
+    # This function remains unchanged. It correctly calls all three engines.
     df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
-    # Data cleaning and feature creation
     df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
     df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
     df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
     df['Cleaned Sales'] = df['Monthly Sales'].apply(lambda s: int(re.sub(r'\D', '', s.replace('k+', '000'))) if isinstance(s, str) and s else 0)
     
-    # Instantiate and run all three engines
     item_engine = ItemIdentifier()
     quality_engine = ListingQualityEvaluator()
     score_engine = PrismScoreEvaluator()
@@ -69,6 +68,7 @@ def load_and_process_data(csv_path):
     df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
     return df
 
+# (Other helper functions like get_rating_stars, etc., remain unchanged)
 def get_rating_stars(rating_text: str):
     if not isinstance(rating_text, str): return "N/A"
     match = re.search(r'(\d\.\d)', rating_text)
@@ -128,26 +128,37 @@ def main():
         st.markdown(f"Based on **{int(current_product.get('Review', 0)):,}** reviews.")
         st.divider()
 
+        # --- FINAL: Updated PRISM Analysis Section ---
         st.subheader("PRISM Analysis")
         potential = current_product.get('Potential', 'Low Potential')
         potential_class = potential.lower().replace(" ", "-")
         prism_score = int(current_product.get('PRISM Score', 0))
 
-        st.markdown("**PRISM Score**")
-        score_bar_col, score_text_col = st.columns([4, 1])
-        with score_bar_col:
-            st.progress(prism_score / 100.0)
-        with score_text_col:
-            st.markdown(f"<div class='score-text'>{prism_score}/100</div>", unsafe_allow_html=True)
+        # Visual Score Bar and Text
+        st.markdown(f"""
+            <div class='score-bar-container'>
+                <div style='flex-grow: 1;'>
+                    <div style='background-color: #e9ecef; border-radius: 0.5rem; height: 10px;'>
+                        <div style='width: {prism_score}%; background-color: #007bff; height: 10px; border-radius: 0.5rem;'></div>
+                    </div>
+                </div>
+                <div class='score-text'>{prism_score}/100</div>
+            </div>
+        """, unsafe_allow_html=True)
         
+        # Display Potential Label
+        st.markdown(f"<div class='potential-label {potential_class}'>{potential}</div>", unsafe_allow_html=True)
+
+        st.markdown("---") # Visual separator
+        
+        # Display Engine Outputs
         st.markdown(f"""
         <div class='analysis-details'>
             <b>Identified Item:</b> {current_product.get('Identified Item', 'N/A')}<br>
             <b>Listing Quality:</b> {current_product.get('Listing Quality', 'N/A')}
         </div>
         """, unsafe_allow_html=True)
-        
-        st.markdown(f"<div class='potential-label {potential_class}' style='margin-top: 10px;'>{potential}</div>", unsafe_allow_html=True)
+
         if current_product.get('Missing Data', False):
             st.markdown("<div class='missing-data-flag'>*Score calculated with some data unavailable.</div>", unsafe_allow_html=True)
 
