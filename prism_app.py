@@ -67,16 +67,21 @@ st.markdown("""
 def load_and_process_data(csv_path):
     try:
         df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
-    except FileNotFoundError: return None
+    except FileNotFoundError:
+        return None
+        
     df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
     df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
     df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
     df['Cleaned Sales'] = df['Monthly Sales'].str.lower().str.replace('k', '000').str.extract(r'(\d+)').astype(float).fillna(0).astype(int)
+    
     item_engine = ItemIdentifier()
     quality_engine = ListingQualityEvaluator()
     score_engine = PrismScoreEvaluator()
+    
     df['Identified Item'] = df['Title'].apply(item_engine.identify)
     df['Listing Quality'] = df['Image'].apply(quality_engine.get_score)
+    
     scores = df.apply(score_engine.get_score, axis=1)
     df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
     return df
@@ -111,14 +116,14 @@ def main():
         st.error("File not found: 'products.csv'. Please ensure it is in your GitHub repository.")
         st.stop()
 
-    # --- Session State Initialization ---
+    st.caption(f"Loaded {len(df)} products for discovery.")
+    st.divider()
+
     if 'app_loaded' not in st.session_state:
         st.session_state.app_loaded = True
-        
         indices = list(df.index)
         random.shuffle(indices)
         st.session_state.shuffled_indices = indices
-        
         try:
             query_params = st.query_params.to_dict()
             saved_from_url = [int(i) for i in query_params.get("saved", [])]
@@ -126,7 +131,6 @@ def main():
             st.session_state.notes = {int(k.split('_')[1]): v[0] for k, v in query_params.items() if k.startswith("note_")}
         except:
              st.session_state.saved_products, st.session_state.notes = [], {}
-        
         if st.session_state.saved_products:
             first_saved_index = st.session_state.saved_products[0]
             if first_saved_index in st.session_state.shuffled_indices:
@@ -135,11 +139,7 @@ def main():
                  st.session_state.product_pointer = 0
         else:
             st.session_state.product_pointer = 0
-    
-    st.caption(f"Loaded {len(df)} products for discovery.")
-    st.divider()
 
-    # --- Sidebar ---
     with st.sidebar:
         st.subheader("Your Shortlist")
         if not st.session_state.saved_products:
@@ -151,9 +151,6 @@ def main():
                     st.markdown("<div class='sidebar-item-container'>", unsafe_allow_html=True)
                     col1, col2 = st.columns([5, 1])
                     with col1:
-                        if st.button(f"img_{saved_index}", key=f"img_{saved_index}"):
-                            st.session_state.product_pointer = st.session_state.shuffled_indices.index(saved_index)
-                            st.rerun()
                         st.image(product.get('Image'), width=60, caption=product.get('Title')[:25]+"...")
                     with col2:
                         if st.button("❌", key=f"remove_{saved_index}", help="Remove from shortlist"):
