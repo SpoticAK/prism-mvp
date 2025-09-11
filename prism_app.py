@@ -5,6 +5,11 @@ import re
 import math
 import urllib.parse
 import random
+import requests
+import cv2
+import numpy as np
+
+# --- Import Engines ---
 from item_identifier import ItemIdentifier
 from listing_quality_evaluator import ListingQualityEvaluator
 from prism_score_evaluator import PrismScoreEvaluator
@@ -112,24 +117,19 @@ def main():
         st.stop()
 
     # --- Session State Initialization ---
-    if 'app_loaded' not in st.session_state:
-        st.session_state.app_loaded = True
+if 'app_loaded' not in st.session_state:
+    st.session_state.app_loaded = True
+    st.session_state.shuffled_indices = list(df.index)  # No shuffle, stable order
+    # ... handle query_params and saved_products as before
         
-        # Create the shuffled browsing order ONCE per session
-        indices = list(df.index)
-        random.shuffle(indices)
-        st.session_state.shuffled_indices = indices
-        
-        # Initialize saved items and notes from URL
         try:
             query_params = st.query_params.to_dict()
             saved_from_url = [int(i) for i in query_params.get("saved", [])]
-            st.session_state.saved_products = list(dict.fromkeys(saved_from_url)) # Ensure uniqueness
+            st.session_state.saved_products = list(dict.fromkeys(saved_from_url))
             st.session_state.notes = {int(k.split('_')[1]): v[0] for k, v in query_params.items() if k.startswith("note_")}
         except:
              st.session_state.saved_products, st.session_state.notes = [], {}
         
-        # Set the initial product pointer
         if st.session_state.saved_products:
             first_saved_index = st.session_state.saved_products[0]
             if first_saved_index in st.session_state.shuffled_indices:
@@ -150,13 +150,9 @@ def main():
             for saved_index in st.session_state.saved_products[:]:
                 product = df.iloc[saved_index]
                 with st.container():
-                    st.markdown(f"<div class='sidebar-item-container'>", unsafe_allow_html=True)
+                    st.markdown("<div class='sidebar-item-container'>", unsafe_allow_html=True)
                     col1, col2 = st.columns([5, 1])
                     with col1:
-                        if st.button(f"img_{saved_index}", key=f"img_{saved_index}"):
-                            # Set the pointer to the correct position in the shuffled list
-                            st.session_state.product_pointer = st.session_state.shuffled_indices.index(saved_index)
-                            st.rerun()
                         st.image(product.get('Image'), width=60, caption=product.get('Title')[:25]+"...")
                     with col2:
                         if st.button("❌", key=f"remove_{saved_index}", help="Remove from shortlist"):
@@ -177,9 +173,8 @@ def main():
                 st.query_params.clear()
                 st.rerun()
 
-    current_shuffled_index = st.session_state.product_pointer
-    current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
-    current_product = df.iloc[current_product_index]
+    current_index = st.session_state.shuffled_indices[st.session_state.product_pointer]
+    current_product = df.iloc[current_index]
 
     col1, col2 = st.columns([2, 3], gap="large")
     with col1:
@@ -197,8 +192,8 @@ def main():
         link_col, save_col = st.columns([3, 1])
         link_col.link_button("View on Amazon ↗", url=generate_amazon_link(current_product.get('Title', '')), use_container_width=True)
         if save_col.button("⭐️ Save", use_container_width=True):
-            if current_product_index not in st.session_state.saved_products:
-                st.session_state.saved_products.append(current_product_index)
+            if current_index not in st.session_state.saved_products:
+                st.session_state.saved_products.append(current_index)
                 st.query_params["saved"] = [str(i) for i in st.session_state.saved_products]
                 st.rerun()
         
