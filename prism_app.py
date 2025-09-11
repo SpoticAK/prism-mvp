@@ -115,12 +115,12 @@ def main():
     if 'app_loaded' not in st.session_state:
         st.session_state.app_loaded = True
         
-        # Create the shuffled browsing order ONCE per session
+        # This shuffled list is ONLY for the browsing experience ("Next"/"Previous")
         indices = list(df.index)
         random.shuffle(indices)
         st.session_state.shuffled_indices = indices
         
-        # Initialize saved items and notes from URL
+        # Read saved items and notes from URL, storing them as STABLE original indices
         try:
             query_params = st.query_params.to_dict()
             saved_from_url = [int(i) for i in query_params.get("saved", [])]
@@ -129,7 +129,7 @@ def main():
         except:
              st.session_state.saved_products, st.session_state.notes = [], {}
         
-        # FIX: If there are saved products, set the initial view to the first one.
+        # Set the initial product pointer
         if st.session_state.saved_products:
             first_saved_index = st.session_state.saved_products[0]
             if first_saved_index in st.session_state.shuffled_indices:
@@ -147,6 +147,7 @@ def main():
         if not st.session_state.saved_products:
             st.info("Click '⭐️ Save' to add items here.")
         else:
+            # Display saved products using their STABLE original indices
             for saved_index in st.session_state.saved_products[:]:
                 product = df.iloc[saved_index]
                 with st.container():
@@ -154,7 +155,7 @@ def main():
                     col1, col2 = st.columns([5, 1])
                     with col1:
                         if st.button(f"img_{saved_index}", key=f"img_{saved_index}"):
-                            # Set the pointer to the correct position in the shuffled list
+                            # When clicked, find the saved item in the shuffled list and jump to it
                             st.session_state.product_pointer = st.session_state.shuffled_indices.index(saved_index)
                             st.rerun()
                         st.image(product.get('Image'), width=60, caption=product.get('Title')[:25]+"...")
