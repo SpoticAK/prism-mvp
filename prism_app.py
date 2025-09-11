@@ -19,18 +19,10 @@ st.markdown("""
         background-color: #FFFFFF; color: #212121;
     }
     .main .block-container { padding: 1rem 2rem; }
-    h1, h2, h3 { color: #1c1c1e; font-weight: 600; }
     
-    /* NEW: Centered and Styled Title */
-    .title-container {
-        text-align: center;
-        margin-bottom: 1rem;
-    }
-    .title-container h1 {
-        font-size: 3rem;
-        font-weight: 700;
-        letter-spacing: -2px;
-    }
+    /* Centered and Styled Title */
+    .title-container { text-align: center; margin-bottom: 1rem; }
+    .title-container h1 { font-size: 3rem; font-weight: 700; letter-spacing: -2px; }
 
     .stButton>button, .stLinkButton>a {
         border-radius: 10px; border: 1px solid #d0d0d5; background-color: #f0f0f5;
@@ -104,7 +96,6 @@ def generate_amazon_link(title):
 
 # --- Main App Execution ---
 def main():
-    # --- NEW: Centered Title ---
     st.markdown("<div class='title-container'><h1>PRISM</h1></div>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; margin-top: -10px;'>Product Research & Insight System</p>", unsafe_allow_html=True)
     
@@ -113,25 +104,31 @@ def main():
         st.error("File not found: 'products.csv'. Please ensure it is in your GitHub repository.")
         st.stop()
 
-    if 'product_index' not in st.session_state:
-        st.session_state.product_index = 0
+    # --- RESTORED: Session State for Randomization ---
+    if 'shuffled_indices' not in st.session_state:
+        indices = list(df.index)
+        random.shuffle(indices)
+        st.session_state.shuffled_indices = indices
+        st.session_state.product_pointer = 0
 
     st.caption(f"Loaded {len(df)} products for discovery.")
     st.divider()
-
-    current_product = df.iloc[st.session_state.product_index]
+    
+    # Use the pointer to get the current item from the shuffled list
+    current_shuffled_index = st.session_state.product_pointer
+    current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
+    current_product = df.iloc[current_product_index]
 
     col1, col2 = st.columns([2, 3], gap="large")
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
         
-        # --- RESTORED: Previous and Next Buttons ---
         nav_col1, nav_col2 = st.columns(2)
         if nav_col1.button("← Previous Product", use_container_width=True):
-            st.session_state.product_index = (st.session_state.product_index - 1 + len(df)) % len(df)
+            st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Next Product →", use_container_width=True):
-            st.session_state.product_index = (st.session_state.product_index + 1) % len(df)
+        if nav_col2.button("Discover Next Product →", use_container_width=True):
+            st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
     with col2:
