@@ -111,14 +111,16 @@ def main():
         st.error("File not found: 'products.csv'. Please ensure it is in your GitHub repository.")
         st.stop()
 
-    # --- Session State Initialization ---
+    # --- CORRECTED Session State Initialization ---
     if 'app_loaded' not in st.session_state:
         st.session_state.app_loaded = True
         
+        # This shuffled list is created ONCE and used only for browsing.
         indices = list(df.index)
         random.shuffle(indices)
         st.session_state.shuffled_indices = indices
         
+        # Read saved items (stable IDs) and notes from the URL.
         try:
             query_params = st.query_params.to_dict()
             saved_from_url = [int(i) for i in query_params.get("saved", [])]
@@ -127,6 +129,8 @@ def main():
         except:
              st.session_state.saved_products, st.session_state.notes = [], {}
         
+        # Determine the initial product to show.
+        # If there are saved items, show the first one. Otherwise, show a random one.
         if st.session_state.saved_products:
             first_saved_index = st.session_state.saved_products[0]
             if first_saved_index in st.session_state.shuffled_indices:
@@ -144,12 +148,17 @@ def main():
         if not st.session_state.saved_products:
             st.info("Click '⭐️ Save' to add items here.")
         else:
+            # Display saved products using their STABLE original indices.
             for saved_index in st.session_state.saved_products[:]:
                 product = df.iloc[saved_index]
                 with st.container():
                     st.markdown("<div class='sidebar-item-container'>", unsafe_allow_html=True)
                     col1, col2 = st.columns([5, 1])
                     with col1:
+                        if st.button(f"img_{saved_index}", key=f"img_{saved_index}"):
+                            # When clicked, find the saved item in the shuffled list and jump to it.
+                            st.session_state.product_pointer = st.session_state.shuffled_indices.index(saved_index)
+                            st.rerun()
                         st.image(product.get('Image'), width=60, caption=product.get('Title')[:25]+"...")
                     with col2:
                         if st.button("❌", key=f"remove_{saved_index}", help="Remove from shortlist"):
