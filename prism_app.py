@@ -5,11 +5,6 @@ import re
 import math
 import urllib.parse
 import random
-import requests
-import cv2
-import numpy as np
-
-# --- Import Engines ---
 from item_identifier import ItemIdentifier
 from listing_quality_evaluator import ListingQualityEvaluator
 from prism_score_evaluator import PrismScoreEvaluator
@@ -25,7 +20,18 @@ st.markdown("""
     }
     .main .block-container { padding: 1rem 2rem; }
     h1, h2, h3 { color: #1c1c1e; font-weight: 600; }
-    h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.15rem; }
+    
+    /* NEW: Centered and Styled Title */
+    .title-container {
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    .title-container h1 {
+        font-size: 3rem;
+        font-weight: 700;
+        letter-spacing: -2px;
+    }
+
     .stButton>button, .stLinkButton>a {
         border-radius: 10px; border: 1px solid #d0d0d5; background-color: #f0f0f5;
         color: #1c1c1e !important; padding: 10px 24px; font-weight: 500;
@@ -98,8 +104,9 @@ def generate_amazon_link(title):
 
 # --- Main App Execution ---
 def main():
-    st.title("PRISM")
-    st.markdown("Product Research & Insight System")
+    # --- NEW: Centered Title ---
+    st.markdown("<div class='title-container'><h1>PRISM</h1></div>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; margin-top: -10px;'>Product Research & Insight System</p>", unsafe_allow_html=True)
     
     df = load_and_process_data('products.csv')
     if df is None:
@@ -117,7 +124,13 @@ def main():
     col1, col2 = st.columns([2, 3], gap="large")
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
-        if st.button("Discover Next Product →", use_container_width=True):
+        
+        # --- RESTORED: Previous and Next Buttons ---
+        nav_col1, nav_col2 = st.columns(2)
+        if nav_col1.button("← Previous Product", use_container_width=True):
+            st.session_state.product_index = (st.session_state.product_index - 1 + len(df)) % len(df)
+            st.rerun()
+        if nav_col2.button("Discover Next Product →", use_container_width=True):
             st.session_state.product_index = (st.session_state.product_index + 1) % len(df)
             st.rerun()
 
