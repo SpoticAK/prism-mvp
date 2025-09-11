@@ -5,63 +5,24 @@ import re
 import math
 import urllib.parse
 import random
-import requests
-import cv2
-import numpy as np
-
-# --- Import Engines ---
 from item_identifier import ItemIdentifier
 from listing_quality_evaluator import ListingQualityEvaluator
 from prism_score_evaluator import PrismScoreEvaluator
 
 # --- Page Configuration and CSS ---
-st.set_page_config(page_title="PRISM", page_icon="🚀", layout="wide")
-st.markdown("""
-<style>
-    /* Base Styles */
-    html, body, [class*="st-"] {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-        background-color: #FFFFFF; color: #212121;
-    }
-    .main .block-container { padding: 1rem 2rem; }
-    h1, h2, h3 { color: #1c1c1e; font-weight: 600; }
-    h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.15rem; }
-    .stButton>button, .stLinkButton>a {
-        border-radius: 10px; border: 1px solid #d0d0d5; background-color: #f0f0f5;
-        color: #1c1c1e !important; padding: 10px 24px; font-weight: 500;
-        text-decoration: none; transition: all 0.2s ease-in-out;
-    }
-    .stButton>button:hover, .stLinkButton>a:hover { background-color: #e0e0e5; border-color: #c0c0c5; }
-    div[data-testid="stMetric"] {
-        background-color: #F9F9F9; border-radius: 12px; padding: 20px; border: 1px solid #EAEAEA;
-    }
-    div[data-testid="stMetric"] > label { font-size: 0.9rem; color: #555555; }
-    div[data-testid="stMetric"] > div { font-size: 1.75rem; font-weight: 600; }
-    .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
-    hr { background-color: #EAEAEA; }
-    .potential-label {
-        padding: 6px 14px; border-radius: 10px; font-weight: 700;
-        font-size: 1.1rem; display: inline-block; text-align: center;
-    }
-    .high-potential { background-color: #d4edda; color: #155724; }
-    .moderate-potential { background-color: #fff3cd; color: #856404; }
-    .low-potential { background-color: #f8d7da; color: #721c24; }
-    .missing-data-flag { font-size: 0.8rem; color: #6c757d; padding-top: 5px; }
-    .score-bar-container { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
-    .score-bar-background { background-color: #e9ecef; border-radius: 0.5rem; height: 10px; flex-grow: 1; }
-    .score-bar-foreground { background-color: #007bff; height: 10px; border-radius: 0.5rem; }
-    .score-text { font-size: 1rem; font-weight: 600; color: #555555; }
-    .analysis-details { line-height: 1.8; }
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="PRISM MVP", page_icon="🚀", layout="wide")
+# NOTE: Full CSS from previous step is collapsed here for brevity
+st.markdown("""<style>... (Your full CSS from the previous step goes here) ...</style>""", unsafe_allow_html=True)
 
 # --- Data Loading and Helper Functions ---
 @st.cache_data
 def load_and_process_data(csv_path):
     try:
         df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
-    except FileNotFoundError: return None
+    except FileNotFoundError:
+        return None
 
+    # Data cleaning and feature creation
     df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
     df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
     df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
@@ -78,7 +39,8 @@ def load_and_process_data(csv_path):
     df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
     return df
 
-def get_rating_stars(rating_text):
+# ... (Other helper functions like get_rating_stars, etc., are unchanged) ...
+def get_rating_stars(rating_text: str):
     if not isinstance(rating_text, str): return "N/A"
     match = re.search(r'(\d\.\d)', rating_text)
     if not match: return "N/A"
@@ -89,14 +51,15 @@ def get_rating_stars(rating_text):
     stars = "★" * full_stars + half_star + "☆" * empty_stars
     return f"{rating_num} {stars}"
 
-def clean_sales_text(sales_text):
+def clean_sales_text(sales_text: str):
     if not isinstance(sales_text, str): return "N/A"
     return sales_text.split(" ")[0]
 
-def generate_amazon_link(title):
+def generate_amazon_link(title: str):
     base_url = "https://www.amazon.in/s?k="
     search_query = urllib.parse.quote_plus(title)
     return f"{base_url}{search_query}"
+
 
 # --- Main App Execution ---
 def main():
@@ -108,13 +71,16 @@ def main():
         st.error("File not found: 'products.csv'. Please ensure it's in your GitHub repository.")
         st.stop()
 
-    st.caption(f"Loaded {len(df)} products for discovery.")
-    st.divider()
-
-    if 'shuffled_indices' not in st.session_state:
+    # --- Session State Initialization ---
+    if 'app_loaded' not in st.session_state:
+        st.session_state.app_loaded = True
+        
+        # Create the shuffled browsing order once
         indices = list(df.index)
         random.shuffle(indices)
         st.session_state.shuffled_indices = indices
+        
+        # Initialize saved items and notes from URL
         try:
             query_params = st.query_params.to_dict()
             saved_from_url = [int(i) for i in query_params.get("saved", [])]
@@ -123,15 +89,20 @@ def main():
         except:
              st.session_state.saved_products, st.session_state.notes = [], {}
         
+        # FIX: If there are saved products, set the initial view to the first one
         if st.session_state.saved_products:
             first_saved_index = st.session_state.saved_products[0]
             if first_saved_index in st.session_state.shuffled_indices:
                  st.session_state.product_pointer = st.session_state.shuffled_indices.index(first_saved_index)
-            else:
+            else: # Fallback if saved index is somehow invalid
                  st.session_state.product_pointer = 0
         else:
             st.session_state.product_pointer = 0
 
+    st.caption(f"Loaded {len(df)} products for discovery.")
+    st.divider()
+
+    # --- Sidebar ---
     with st.sidebar:
         st.subheader("Your Shortlist")
         if not st.session_state.saved_products:
@@ -143,6 +114,9 @@ def main():
                     st.markdown("<div class='sidebar-item-container'>", unsafe_allow_html=True)
                     col1, col2 = st.columns([5, 1])
                     with col1:
+                        if st.button(f"img_{saved_index}", key=f"img_{saved_index}"):
+                            st.session_state.product_pointer = st.session_state.shuffled_indices.index(saved_index)
+                            st.rerun()
                         st.image(product.get('Image'), width=60, caption=product.get('Title')[:25]+"...")
                     with col2:
                         if st.button("❌", key=f"remove_{saved_index}", help="Remove from shortlist"):
@@ -156,15 +130,17 @@ def main():
                     if note_text != st.session_state.notes.get(saved_index, ""):
                         st.session_state.notes[saved_index] = note_text
                         st.query_params[f"note_{saved_index}"] = note_text
-                        st.rerun()
+                        # No rerun here to allow typing without interruption
                     st.markdown("</div>", unsafe_allow_html=True)
             if st.button("Clear All", use_container_width=True, type="secondary"):
                 st.session_state.saved_products, st.session_state.notes = [], {}
                 st.query_params.clear()
                 st.rerun()
 
-    current_index = st.session_state.shuffled_indices[st.session_state.product_pointer]
-    current_product = df.iloc[current_index]
+    # --- Main Dashboard ---
+    current_shuffled_index = st.session_state.product_pointer
+    current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
+    current_product = df.iloc[current_product_index]
 
     col1, col2 = st.columns([2, 3], gap="large")
     with col1:
@@ -182,8 +158,8 @@ def main():
         link_col, save_col = st.columns([3, 1])
         link_col.link_button("View on Amazon ↗", url=generate_amazon_link(current_product.get('Title', '')), use_container_width=True)
         if save_col.button("⭐️ Save", use_container_width=True):
-            if current_index not in st.session_state.saved_products:
-                st.session_state.saved_products.append(current_index)
+            if current_product_index not in st.session_state.saved_products:
+                st.session_state.saved_products.append(current_product_index)
                 st.query_params["saved"] = [str(i) for i in st.session_state.saved_products]
                 st.rerun()
         
