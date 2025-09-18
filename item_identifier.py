@@ -1,74 +1,48 @@
 # File: item_identifier.py
-import re
+import spacy
+import streamlit as st
 
 class ItemIdentifier:
     """
-    Identifies the core item from a product title using a hardcoded
-    "Golden Zone" and an expanded noise word list. No external NLP libraries needed.
+    Identifies the core item from a product title using the spaCy NLP library.
     """
     def __init__(self):
-        # A comprehensive, hardcoded list of words to ignore.
+        self._nlp = self._load_model()
         self._noise_words = {
-            # Adjectives & Descriptors
-            'stylish', 'comfortable', 'premium', 'high', 'quality', 'heavy', 'duty',
-            'waterproof', 'convertible', 'streachable', 'full', 'loose', 'relaxed',
-            'retractable', 'handheld', 'rechargeable', 'portable', 'soft', 'stretchy',
-            'cushioned', 'breathable', 'sturdy', 'micronized', 'new', 'complete',
-
-            # Genders (now without apostrophes)
-            'men', 'women', 'kids', 'man', 'woman', 'boys', 'girls', 'unisex', 'adult',
-
-            # Common Filler Words
-            'home', 'gym', 'workout', 'exercise', 'training', 'gear', 'for',
-            'accessories', 'powerlifting', 'solid', 'combo', 'kit', 'pack', 'set',
-            'pcs', 'of', 'gram', 'serves', 'piece', 'pieces', 'anti', 'slip', 'multi',
-            'with', 'and', 'the', 'a', 'in', 'per', 'ideal', 'everyday', 'use',
-
-            # Colors & Sizes
-            'black', 'white', 'red', 'blue', 'green', 'multicolor',
-            'large', 'medium', 'small', 'size', 'fit',
-
-            # Vague Nouns/Verbs that are often noise
-            'fitness', 'toning', 'band', 'bands', 'cover', 'support'
+            'men', 'women', 'kids', 'man', 'woman', 'boys', 'girls', 'mens', 'womens',
+            'home', 'gym', 'workout', 'exercise', 'training', 'gear', 'for', 'and', 'with',
+            'the', 'a', 'in', 'of', 'per', 'pack', 'set', 'combo', 'kit'
         }
-        # Regex to find and remove specifications like "20L", "500ML", "4mm"
-        self._spec_pattern = re.compile(r'\b(\d+l|\d+ml|\d+mm|\d+g|\d+kg)\b', re.IGNORECASE)
+
+    @st.cache_resource
+    def _load_model(_self):
+        """Loads the spaCy model, which was installed via requirements.txt."""
+        return spacy.load("en_core_web_sm")
 
     def identify(self, title: str) -> str:
         """
-        Processes a title using the "Smart Cut-off" logic with improved cleaning.
+        Processes a title to find the most likely noun phrase representing the core item.
         """
         if not isinstance(title, str):
             return "Not Found"
 
-        # 1. Create the "Smart Cut-off" Golden Zone
-        limit = 50
-        if len(title) > limit:
-            next_space = title.find(' ', limit)
-            golden_zone = title[:next_space] if next_space != -1 else title[:limit]
-        else:
-            golden_zone = title
-        
-        # 2. Advanced Filtering
-        # CRITICAL FIX: Sanitize possessives *before* tokenizing.
-        sanitized_zone = golden_zone.lower().replace("'s", "")
-        
-        cleaned_zone = self._spec_pattern.sub('', sanitized_zone)
-        words = re.findall(r'\b[a-zA-Z-]+\b', cleaned_zone)
-        
-        if not words:
-            return "Not Found"
-            
-        # Assume first word is brand and remove it
-        candidate_words = words[1:] if len(words) > 1 else words
-        
-        # Remove noise words
-        item_words = [w for w in candidate_words if w not in self._noise_words]
+        # Process the first part of the title before a separator
+        core_title = title.split('|')[0].split(',')[0]
+        doc = self._nlp(core_title)
 
-        if not item_words:
+        # Find all noun phrases (e.g., "Sports Shoes", "Wrist Support")
+        noun_chunks = [chunk.text.strip() for chunk in doc.noun_chunks]
+
+        if not noun_chunks:
             return "Not Found"
 
-        # 3. Join the remaining words
-        identified_phrase = " ".join(item_words)
-
-        return identified_phrase.title()
+        # Smart Heuristic:
+        # 1. Ignore the first chunk if it's likely just the brand name.
+        # 2. Find the best remaining chunk that isn't just noise.
+        start_index = 1 if len(noun_chunks) > 1 else 0
+        for chunk in noun_chunks[start_index:]:
+            if chunk.lower() not in self._noise_words:
+                return chunk.title()
+        
+        # Fallback to the first chunk if no other good ones are found
+        return noun_chunks[0].title()
