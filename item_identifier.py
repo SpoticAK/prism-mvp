@@ -23,8 +23,9 @@ class ItemIdentifier:
         if not isinstance(title, str):
             return "Not Found"
 
-        # Isolate the main part of the title before a separator
-        core_title = title.split('|')[0].split(',')[0]
+        # --- UPDATED LOGIC ---
+        # Only split the title by the '|' character.
+        core_title = title.split('|')[0]
         doc = self._nlp(core_title)
 
         # Find the grammatical root of the title
@@ -56,3 +57,4 @@ class ItemIdentifier:
                 return "Not Found"
 
         return " ".join(item_words).title()
+    
