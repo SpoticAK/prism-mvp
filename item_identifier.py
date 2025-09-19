@@ -4,45 +4,55 @@ import streamlit as st
 
 class ItemIdentifier:
     """
-    Identifies the core item from a product title using the spaCy NLP library.
+    Identifies the core item from a product title using spaCy's
+    grammatical dependency parsing.
     """
     def __init__(self):
         self._nlp = self._load_model()
-        self._noise_words = {
-            'men', 'women', 'kids', 'man', 'woman', 'boys', 'girls', 'mens', 'womens',
-            'home', 'gym', 'workout', 'exercise', 'training', 'gear', 'for', 'and', 'with',
-            'the', 'a', 'in', 'of', 'per', 'pack', 'set', 'combo', 'kit'
-        }
+        self._noise_words = {'men', 'women', 'kids', 'gear', 'for'}
 
     @st.cache_resource
     def _load_model(_self):
-        """Loads the spaCy model, which was installed via requirements.txt."""
+        """Loads the spaCy model, installed via requirements.txt."""
         return spacy.load("en_core_web_sm")
 
     def identify(self, title: str) -> str:
         """
-        Processes a title to find the most likely noun phrase representing the core item.
+        Processes a title to find the core item by analyzing its grammatical structure.
         """
         if not isinstance(title, str):
             return "Not Found"
 
-        # Process the first part of the title before a separator
+        # Isolate the main part of the title before a separator
         core_title = title.split('|')[0].split(',')[0]
         doc = self._nlp(core_title)
 
-        # Find all noun phrases (e.g., "Sports Shoes", "Wrist Support")
-        noun_chunks = [chunk.text.strip() for chunk in doc.noun_chunks]
-
-        if not noun_chunks:
+        # Find the grammatical root of the title
+        root = None
+        for token in doc:
+            if token.dep_ == "ROOT":
+                root = token
+                break
+        
+        if not root:
             return "Not Found"
 
-        # Smart Heuristic:
-        # 1. Ignore the first chunk if it's likely just the brand name.
-        # 2. Find the best remaining chunk that isn't just noise.
-        start_index = 1 if len(noun_chunks) > 1 else 0
-        for chunk in noun_chunks[start_index:]:
-            if chunk.lower() not in self._noise_words:
-                return chunk.title()
+        # Find all words directly related to the root (the subject/object)
+        # and ignore prepositional phrases (the "use case")
+        item_words = []
+        for child in root.subtree:
+            # Ignore words that are part of a prepositional phrase (like "for Toilet")
+            if child.dep_ == 'pobj' or child.head.dep_ == 'prep':
+                continue
+            # Keep nouns, adjectives, and compound words related to the root
+            if child.pos_ in ['NOUN', 'PROPN', 'ADJ'] and child.text.lower() not in self._noise_words:
+                item_words.append(child.text)
         
-        # Fallback to the first chunk if no other good ones are found
-        return noun_chunks[0].title()
+        if not item_words:
+            # Fallback for very simple titles
+            if root.text.lower() not in self._noise_words:
+                return root.text.title()
+            else:
+                return "Not Found"
+
+        return " ".join(item_words).title()
