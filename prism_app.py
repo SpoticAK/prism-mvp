@@ -5,11 +5,6 @@ import re
 import math
 import urllib.parse
 import random
-import requests
-import cv2
-import numpy as np
-
-# --- Import Engines ---
 from item_identifier import ItemIdentifier
 from listing_quality_evaluator import ListingQualityEvaluator
 from prism_score_evaluator import PrismScoreEvaluator
@@ -39,6 +34,16 @@ st.markdown("""
     div[data-testid="stMetric"] > div { font-size: 1.75rem; font-weight: 600; }
     .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
     hr { background-color: #EAEAEA; }
+
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] [data-testid="stImage"] > img {
+        width: 60px !important; height: 60px !important; border-radius: 8px; object-fit: cover;
+    }
+    .sidebar-item-container {
+        padding: 10px; border-radius: 10px; margin-bottom: 10px; background-color: #f9f9f9;
+    }
+    .remove-btn { color: #aaa; border: none; background: none; font-size: 1.1rem; cursor: pointer; }
+    .remove-btn:hover { color: #ff4b4b; }
 
     /* Potential Label & Score Bar Styling */
     .potential-label {
@@ -180,10 +185,10 @@ def main():
         
         st.divider()
 
-        # --- NEW: Indiamart Supplier Search ---
+        # --- UPDATED: Indiamart Supplier Search ---
         st.subheader("Supplier Gateway")
         indiamart_url = generate_indiamart_link(identified_item)
-        st.link_button(f"Search for '{identified_item}' on Indiamart ↗", url=indiamart_url, use_container_width=True)
+        st.link_button("Search for Suppliers on Indiamart ↗", url=indiamart_url, use_container_width=True)
 
 if __name__ == "__main__":
     main()
