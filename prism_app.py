@@ -13,27 +13,55 @@ import numpy as np
 st.set_page_config(page_title="PRISM", page_icon="🚀", layout="wide")
 st.markdown("""
 <style>
-    /* Base Styles */
+    /* Base Styles & Typography */
     html, body, [class*="st-"] {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-        background-color: #FFFFFF; color: #212121;
+        background-color: #F0F2F6; /* Light grey background */
+        color: #1a1a1a;
     }
-    .main .block-container { padding: 1rem 2rem; }
-    h1, h2, h3 { color: #1c1c1e; font-weight: 600; }
-    h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.15rem; }
+    .main .block-container { padding: 1.5rem 2.5rem; }
+    h1, h2, h3 { color: #1c1c1e; font-weight: 700; }
+    h2 { font-size: 1.6rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
+    h3 { font-size: 1.25rem; font-weight: 600; }
+
+    /* Centered and Styled Title */
+    .title-container { text-align: center; margin-bottom: 1.5rem; }
+    .title-container h1 { font-size: 3.5rem; font-weight: 800; letter-spacing: -3px; }
+    .title-container p { font-size: 1.1rem; color: #555; margin-top: -10px; }
+
+    /* Buttons & Links */
     .stButton>button, .stLinkButton>a {
-        border-radius: 10px; border: 1px solid #d0d0d5; background-color: #f0f0f5;
-        color: #1c1c1e !important; padding: 10px 24px; font-weight: 500;
+        border-radius: 8px; border: none; background-color: #007aff;
+        color: #FFFFFF !important; padding: 12px 28px; font-weight: 600;
         text-decoration: none; transition: all 0.2s ease-in-out;
     }
-    .stButton>button:hover, .stLinkButton>a:hover { background-color: #e0e0e5; border-color: #c0c0c5; }
-    div[data-testid="stMetric"] {
-        background-color: #F9F9F9; border-radius: 12px; padding: 20px; border: 1px solid #EAEAEA;
+    .stButton>button:hover, .stLinkButton>a:hover { background-color: #0056b3; }
+    
+    /* Main Content Card */
+    .content-card {
+        background-color: #FFFFFF; border-radius: 12px; padding: 25px;
+        border: 1px solid #EAEAEA; box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+        margin-bottom: 20px;
     }
-    div[data-testid="stMetric"] > label { font-size: 0.9rem; color: #555555; }
-    div[data-testid="stMetric"] > div { font-size: 1.75rem; font-weight: 600; }
-    .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
-    hr { background-color: #EAEAEA; }
+
+    /* Metric "Cards" */
+    div[data-testid="stMetric"] {
+        background-color: #F9F9F9; border-radius: 12px; padding: 20px; 
+        border: 1px solid #EAEAEA; transition: box-shadow 0.2s ease-in-out;
+    }
+    div[data-testid="stMetric"]:hover { box-shadow: 0 8px 15px rgba(0,0,0,0.06); }
+    div[data-testid="stMetric"] > label { font-size: 1rem; color: #555555; font-weight: 500; }
+    div[data-testid="stMetric"] > div { font-size: 2rem; font-weight: 700; }
+
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] { background-color: #FAFAFA; }
+    .sidebar-item-container {
+        padding: 10px; border-radius: 10px; margin-bottom: 10px; background-color: #FFFFFF;
+    }
+    .remove-btn { color: #aaa; border: none; background: none; font-size: 1.1rem; cursor: pointer; }
+    .remove-btn:hover { color: #ff4b4b; }
+
+    /* (Other styles unchanged) */
     .potential-label {
         padding: 6px 14px; border-radius: 10px; font-weight: 700;
         font-size: 1.1rem; display: inline-block; text-align: center;
@@ -64,7 +92,7 @@ class ItemIdentifier:
             'everyday', 'use', 'black', 'white', 'red', 'blue', 'green', 'multicolor', 'large', 'medium', 
             'small', 'size', 'fit', 'fitness', 'toning', 'band', 'bands', 'cover', 'support'
         }
-        self._model_number_pattern = re.compile(r'\b[a-zA-Z]+\d+[a-zA-Z0-9]*\b|\b\d+[a-zA-Z]+\b')
+        self._spec_pattern = re.compile(r'\b(\d+l|\d+ml|\d+mm|\d+g|\d+kg)\b', re.IGNORECASE)
 
     def identify(self, title: str) -> str:
         if not isinstance(title, str): return "Not Found"
@@ -189,8 +217,7 @@ def generate_indiamart_link(item_name):
 
 # --- Main App Execution ---
 def main():
-    st.markdown("<div class='title-container'><h1>PRISM</h1></div>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; margin-top: -10px;'>Product Research & Insight System</p>", unsafe_allow_html=True)
+    st.markdown("<div class='title-container'><h1>PRISM</h1><p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
     df = load_and_process_data('products.csv')
     if df is None:
@@ -209,61 +236,63 @@ def main():
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
         nav_col1, nav_col2 = st.columns(2)
-        if nav_col1.button("← Previous", use_container_width=True):
+        if nav_col1.button("← Previous Product", use_container_width=True):
             st.session_state.product_index = (st.session_state.product_index - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Next →", use_container_width=True):
+        if nav_col2.button("Discover Next Product →", use_container_width=True):
             st.session_state.product_index = (st.session_state.product_index + 1) % len(df)
             st.rerun()
 
     with col2:
-        st.markdown(f"### {current_product.get('Title', 'No Title Available')}")
-        st.link_button("View on Amazon ↗", url=generate_amazon_link(current_product.get('Title', '')), use_container_width=True)
-        st.markdown("---")
-        
-        metric_col1, metric_col2 = st.columns(2)
-        metric_col1.metric(label="💰 Price", value=f"₹{current_product.get('Price', 0):,.0f}")
-        metric_col2.metric(label="📈 Monthly Sales", value=clean_sales_text(current_product.get('Monthly Sales', 'N/A')))
-        
-        st.markdown("### ⭐ Rating")
-        st.markdown(f"<h2 style='color: #212121; font-weight: 600;'>{get_rating_stars(current_product.get('Ratings', 'N/A'))}</h2>", unsafe_allow_html=True)
-        st.markdown(f"Based on **{int(current_product.get('Review', 0)):,}** reviews.")
-        st.divider()
+        with st.container():
+            st.markdown(f"<div class='content-card'>", unsafe_allow_html=True)
+            st.markdown(f"### {current_product.get('Title', 'No Title Available')}")
+            st.link_button("View on Amazon ↗", url=generate_amazon_link(current_product.get('Title', '')), use_container_width=True)
+            st.markdown("---")
+            
+            metric_col1, metric_col2 = st.columns(2)
+            metric_col1.metric(label="💰 Price", value=f"₹{current_product.get('Price', 0):,.0f}")
+            metric_col2.metric(label="📈 Monthly Sales", value=clean_sales_text(current_product.get('Monthly Sales', 'N/A')))
+            
+            st.markdown("### ⭐ Rating")
+            st.markdown(f"<h2 style='color: #212121; font-weight: 600;'>{get_rating_stars(current_product.get('Ratings', 'N/A'))}</h2>", unsafe_allow_html=True)
+            st.markdown(f"Based on **{int(current_product.get('Review', 0)):,}** reviews.")
+            st.divider()
 
-        st.subheader("📊 PRISM Analysis")
-        potential = current_product.get('Potential', 'Low Potential')
-        potential_class = potential.lower().replace(" ", "-")
-        prism_score = int(current_product.get('PRISM Score', 0))
-        identified_item = current_product.get('Identified Item', 'N/A')
+            st.subheader("📊 PRISM Analysis")
+            potential = current_product.get('Potential', 'Low Potential')
+            potential_class = potential.lower().replace(" ", "-")
+            prism_score = int(current_product.get('PRISM Score', 0))
+            identified_item = current_product.get('Identified Item', 'N/A')
 
-        st.markdown("**PRISM Score**")
-        st.markdown(f"""
-            <div class="score-bar-container">
-                <div class="score-bar-background">
-                    <div class="score-bar-foreground" style="width: {prism_score}%;"></div>
+            st.markdown("**PRISM Score**")
+            st.markdown(f"""
+                <div class="score-bar-container">
+                    <div class="score-bar-background">
+                        <div class="score-bar-foreground" style="width: {prism_score}%;"></div>
+                    </div>
+                    <div class="score-text">{prism_score}/100</div>
                 </div>
-                <div class="score-text">{prism_score}/100</div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown(f"<div class='potential-label {potential_class}'>{potential}</div>", unsafe_allow_html=True)
+            st.markdown("---")
+            st.markdown(f"""
+            <div class='analysis-details'>
+                <b>Identified Item:</b> {identified_item}<br>
+                <b>Listing Quality:</b> {current_product.get('Listing Quality', 'N/A')}
             </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown(f"<div class='potential-label {potential_class}'>{potential}</div>", unsafe_allow_html=True)
-        st.markdown("---")
-        
-        st.markdown(f"""
-        <div class='analysis-details'>
-            <b>Identified Item:</b> {identified_item}<br>
-            <b>Listing Quality:</b> {current_product.get('Listing Quality', 'N/A')}
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
-        if current_product.get('Missing Data', False):
-            st.markdown("<div class='missing-data-flag'>*Score calculated with some data unavailable.</div>", unsafe_allow_html=True)
-        
-        st.divider()
-        
-        st.subheader("🔗 Supplier Gateway")
-        indiamart_url = generate_indiamart_link(identified_item)
-        st.link_button("Search for Suppliers on Indiamart ↗", url=indiamart_url, use_container_width=True)
+            if current_product.get('Missing Data', False):
+                st.markdown("<div class='missing-data-flag'>*Score calculated with some data unavailable.</div>", unsafe_allow_html=True)
+            
+            st.divider()
+            
+            st.subheader("🔗 Supplier Gateway")
+            indiamart_url = generate_indiamart_link(identified_item)
+            st.link_button("Search for Suppliers on Indiamart ↗", url=indiamart_url, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
