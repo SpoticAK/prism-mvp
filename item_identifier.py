@@ -33,10 +33,7 @@ class ItemIdentifier:
         
         # 2. Filter Noise
         # Ignore the first word (brand)
-        if len(golden_zone_words) > 1:
-            candidate_words = golden_zone_words[1:]
-        else:
-            candidate_words = golden_zone_words
+        candidate_words = golden_zone_words[1:] if len(golden_zone_words) > 1 else golden_zone_words
             
         # Remove model numbers and noise words
         item_words = []
