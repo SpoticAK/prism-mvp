@@ -9,11 +9,6 @@ import requests
 import cv2
 import numpy as np
 
-# --- Import Engines ---
-from item_identifier import ItemIdentifier
-from listing_quality_evaluator import ListingQualityEvaluator
-from prism_score_evaluator import PrismScoreEvaluator
-
 # --- Page Configuration and CSS ---
 st.set_page_config(page_title="PRISM", page_icon="🚀", layout="wide")
 st.markdown("""
@@ -23,9 +18,11 @@ st.markdown("""
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
         background-color: #F0F2F6; color: #212121;
     }
-    .main .block-container { padding: 1rem 2rem; }
-    h1, h2, h3 { color: #1c1c1e; font-weight: 600; }
-    h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.15rem; }
+    .main .block-container { padding: 1.5rem 2.5rem; }
+    h1, h2, h3 { color: #1c1c1e; font-weight: 700; }
+    h1 { font-size: 2.2rem; }
+    h2 { font-size: 1.6rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
+    h3 { font-size: 1.25rem; font-weight: 600; }
 
     /* Centered and Styled Title */
     .title-container { text-align: center; margin-bottom: 1.5rem; }
@@ -41,6 +38,10 @@ st.markdown("""
     .stButton>button:hover, .stLinkButton>a:hover { 
         background-color: #B92428; /* Darker Red on Hover */
         color: #FFFFFF !important;
+    }
+    /* --- CRITICAL FIX for Button Text Background --- */
+    .stButton>button div, .stLinkButton>a div {
+        background-color: transparent;
     }
     
     /* Main Content Card */
@@ -60,19 +61,8 @@ st.markdown("""
     .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
     hr { background-color: #EAEAEA; }
 
-    /* Sidebar Styling */
-    [data-testid="stSidebar"] { background-color: #FAFAFA; }
-    .sidebar-item-container {
-        padding: 10px; border-radius: 10px; margin-bottom: 10px; background-color: #FFFFFF;
-    }
-    .remove-btn { color: #aaa; border: none; background: none; font-size: 1.1rem; cursor: pointer; }
-    .remove-btn:hover { color: #ff4b4b; }
-
-    /* Potential Label & Score Bar Styling */
-    .potential-label {
-        padding: 6px 14px; border-radius: 10px; font-weight: 700;
-        font-size: 1.1rem; display: inline-block; text-align: center;
-    }
+    /* (Other styles are unchanged) */
+    .potential-label { padding: 6px 14px; border-radius: 10px; font-weight: 700; font-size: 1.1rem; display: inline-block; text-align: center; }
     .high-potential { background-color: #d4edda; color: #155724; }
     .moderate-potential { background-color: #fff3cd; color: #856404; }
     .low-potential { background-color: #f8d7da; color: #721c24; }
@@ -84,6 +74,99 @@ st.markdown("""
     .analysis-details { line-height: 1.8; }
 </style>
 """, unsafe_allow_html=True)
+
+# --- Engine #1: Item Identifier ---
+class ItemIdentifier:
+    def __init__(self):
+        self._noise_words = {
+            'stylish', 'comfortable', 'premium', 'high', 'quality', 'heavy', 'duty', 'waterproof', 'convertible', 
+            'streachable', 'full', 'loose', 'relaxed', 'retractable', 'handheld', 'rechargeable', 'portable', 
+            'soft', 'stretchy', 'cushioned', 'breathable', 'sturdy', 'micronized', 'new', 'complete', 
+            "men's", "women's", "boy's", "girl's", 'mens', 'womens', 'men', 'women', 'kids', 'man', 'woman', 
+            'boys', 'girls', 'unisex', 'adult', 'home', 'gym', 'workout', 'exercise', 'training', 'gear', 'for', 
+            'accessories', 'powerlifting', 'solid', 'combo', 'kit', 'pack', 'set', 'pcs', 'of', 'gram', 'serves', 
+            'piece', 'pieces', 'anti', 'slip', 'multi', 'with', 'and', 'the', 'a', 'in', 'per', 'ideal', 
+            'everyday', 'use', 'black', 'white', 'red', 'blue', 'green', 'multicolor', 'large', 'medium', 
+            'small', 'size', 'fit', 'fitness', 'toning', 'band', 'bands', 'cover', 'support'
+        }
+        self._model_number_pattern = re.compile(r'\b[a-zA-Z]+\d+[a-zA-Z0-9]*\b|\b\d+[a-zA-Z]+\b')
+
+    def identify(self, title: str) -> str:
+        if not isinstance(title, str): return "Not Found"
+        words = title.lower().split()
+        golden_zone_words = words[:10]
+        candidate_words = golden_zone_words[1:] if len(golden_zone_words) > 1 else golden_zone_words
+        item_words = []
+        for word in candidate_words:
+            clean_word = re.sub(r'[^\w-]', '', word)
+            if not self._model_number_pattern.search(clean_word) and clean_word not in self._noise_words:
+                item_words.append(clean_word)
+        if not item_words: return "Not Found"
+        return " ".join(item_words).title()
+
+# --- Engine #2: Listing Quality Evaluator ---
+class ListingQualityEvaluator:
+    @st.cache_data
+    def get_score(_self, image_url: str) -> str:
+        if not isinstance(image_url, str) or not image_url: return "Error"
+        try:
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(image_url, timeout=10, headers=headers)
+            response.raise_for_status()
+            image_array = np.frombuffer(response.content, np.uint8)
+            img = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+            if img is None: return "Error"
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            _, thresh = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY_INV)
+            object_pixels = cv2.countNonZero(thresh)
+            total_pixels = img.shape[0] * img.shape[1]
+            coverage_percentage = (object_pixels / total_pixels) * 100
+            if coverage_percentage > 70: return "Good"
+            elif coverage_percentage >= 50: return "Average"
+            else: return "Poor"
+        except Exception:
+            return "Error"
+
+# --- Engine #3: PRISM Score Evaluator ---
+class PrismScoreEvaluator:
+    def get_score(self, product_data: pd.Series) -> (int, str, bool):
+        points_earned, points_available, missing_data = 0, 15, False
+        price = product_data.get('Price')
+        if pd.notna(price):
+            if 200 <= price <= 350: points_earned += 4
+            elif 175 <= price <= 199 or price > 350: points_earned += 2
+            elif price < 175: points_earned += 1
+        else: points_available -= 4; missing_data = True
+        reviews = product_data.get('Review')
+        if pd.notna(reviews):
+            if reviews >= 100: points_earned += 3
+            elif 50 <= reviews <= 99: points_earned += 2
+            else: points_earned += 1
+        else: points_available -= 3; missing_data = True
+        rating = product_data.get('Ratings_Num')
+        if pd.notna(rating):
+            if rating >= 4.2: points_earned += 3
+            elif 3.6 <= rating <= 4.19: points_earned += 2
+            elif 3.0 <= rating <= 3.59: points_earned += 1
+        else: points_available -= 3; missing_data = True
+        quality = product_data.get('Listing Quality')
+        if pd.notna(quality) and quality != "Error":
+            if quality == 'Poor': points_earned += 2
+            elif quality == 'Average' or quality == 'Good': points_earned += 1
+        else: points_available -= 2; missing_data = True
+        original_sales = product_data.get('Monthly Sales')
+        cleaned_sales = product_data.get('Cleaned Sales')
+        if pd.isna(original_sales) or str(original_sales).strip().lower() in ['n/a', '']:
+            points_available -= 3; missing_data = True
+        else:
+            if cleaned_sales >= 500: points_earned += 3
+            elif 100 <= cleaned_sales <= 499: points_earned += 2
+            else: points_earned += 1
+        final_score = int((points_earned / points_available) * 100) if points_available > 0 else 0
+        if final_score > 80: potential_label = "High Potential"
+        elif final_score >= 66: potential_label = "Moderate Potential"
+        else: potential_label = "Low Potential"
+        return final_score, potential_label, missing_data
 
 # --- Data Loading and Helper Functions ---
 @st.cache_data
