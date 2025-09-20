@@ -5,6 +5,11 @@ import re
 import math
 import urllib.parse
 import random
+import requests
+import cv2
+import numpy as np
+
+# --- Import Engines ---
 from item_identifier import ItemIdentifier
 from listing_quality_evaluator import ListingQualityEvaluator
 from prism_score_evaluator import PrismScoreEvaluator
@@ -18,24 +23,25 @@ st.markdown("""
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
         background-color: #F0F2F6; color: #212121;
     }
-    .main .block-container { padding: 1.5rem 2.5rem; }
-    h1, h2, h3 { color: #1c1c1e; font-weight: 700; }
-    h1 { font-size: 2.2rem; }
-    h2 { font-size: 1.6rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
-    h3 { font-size: 1.25rem; font-weight: 600; }
+    .main .block-container { padding: 1rem 2rem; }
+    h1, h2, h3 { color: #1c1c1e; font-weight: 600; }
+    h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.15rem; }
 
     /* Centered and Styled Title */
     .title-container { text-align: center; margin-bottom: 1.5rem; }
     .title-container h1 { font-size: 3.5rem; font-weight: 800; letter-spacing: -3px; }
     .title-container p { font-size: 1.1rem; color: #555; margin-top: -10px; }
 
-    /* Buttons & Links */
+    /* --- CORRECTED: Buttons with new color scheme --- */
     .stButton>button, .stLinkButton>a {
-        border-radius: 8px; border: 1px solid #d0d0d5; background-color: #FFFFFF;
-        color: #1c1c1e !important; padding: 12px 28px; font-weight: 600;
+        border-radius: 8px; border: none; background-color: #D92B2F; /* Modern Red */
+        color: #FFFFFF !important; padding: 12px 28px; font-weight: 600;
         text-decoration: none; transition: all 0.2s ease-in-out;
     }
-    .stButton>button:hover, .stLinkButton>a:hover { background-color: #f0f0f5; border-color: #b0b0b5; }
+    .stButton>button:hover, .stLinkButton>a:hover { 
+        background-color: #B92428; /* Darker Red on Hover */
+        color: #FFFFFF !important;
+    }
     
     /* Main Content Card */
     .content-card {
@@ -51,6 +57,8 @@ st.markdown("""
     div[data-testid="stMetric"]:hover { box-shadow: 0 8px 15px rgba(0,0,0,0.06); }
     div[data-testid="stMetric"] > label { font-size: 1rem; color: #555555; font-weight: 500; }
     div[data-testid="stMetric"] > div { font-size: 2rem; font-weight: 700; }
+    .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
+    hr { background-color: #EAEAEA; }
 
     /* Sidebar Styling */
     [data-testid="stSidebar"] { background-color: #FAFAFA; }
@@ -60,7 +68,7 @@ st.markdown("""
     .remove-btn { color: #aaa; border: none; background: none; font-size: 1.1rem; cursor: pointer; }
     .remove-btn:hover { color: #ff4b4b; }
 
-    /* (Other styles unchanged) */
+    /* Potential Label & Score Bar Styling */
     .potential-label {
         padding: 6px 14px; border-radius: 10px; font-weight: 700;
         font-size: 1.1rem; display: inline-block; text-align: center;
@@ -71,7 +79,7 @@ st.markdown("""
     .missing-data-flag { font-size: 0.8rem; color: #6c757d; padding-top: 5px; }
     .score-bar-container { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
     .score-bar-background { background-color: #e9ecef; border-radius: 0.5rem; height: 10px; flex-grow: 1; }
-    .score-bar-foreground { background-color: #007bff; height: 10px; border-radius: 0.5rem; }
+    .score-bar-foreground { background-color: #D92B2F; height: 10px; border-radius: 0.5rem; } /* Red score bar */
     .score-text { font-size: 1rem; font-weight: 600; color: #555555; }
     .analysis-details { line-height: 1.8; }
 </style>
@@ -130,31 +138,23 @@ def main():
         st.error("File not found: 'products.csv'. Please ensure it is in your GitHub repository.")
         st.stop()
 
-    # --- RESTORED: Session State for Randomization ---
-    if 'shuffled_indices' not in st.session_state:
-        indices = list(df.index)
-        random.shuffle(indices)
-        st.session_state.shuffled_indices = indices
-        st.session_state.product_pointer = 0
+    if 'product_index' not in st.session_state:
+        st.session_state.product_index = 0
 
     st.caption(f"Loaded {len(df)} products for discovery.")
     st.divider()
 
-    # Use the pointer to get the current item from the shuffled list
-    current_shuffled_index = st.session_state.product_pointer
-    current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
-    current_product = df.iloc[current_product_index]
+    current_product = df.iloc[st.session_state.product_index]
 
     col1, col2 = st.columns([2, 3], gap="large")
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
-        
         nav_col1, nav_col2 = st.columns(2)
-        if nav_col1.button("← Previous Product", use_container_width=True):
-            st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
+        if nav_col1.button("← Previous", use_container_width=True):
+            st.session_state.product_index = (st.session_state.product_index - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Discover Next Product →", use_container_width=True):
-            st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
+        if nav_col2.button("Next →", use_container_width=True):
+            st.session_state.product_index = (st.session_state.product_index + 1) % len(df)
             st.rerun()
 
     with col2:
