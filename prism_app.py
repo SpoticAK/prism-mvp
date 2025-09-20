@@ -29,7 +29,7 @@ st.markdown("""
     .title-container h1 { font-size: 3.5rem; font-weight: 800; letter-spacing: -3px; }
     .title-container p { font-size: 1.1rem; color: #555; margin-top: -10px; }
 
-    /* CORRECTED: Buttons & Links with professional styling */
+    /* CORRECTED: Buttons with professional styling */
     .stButton>button, .stLinkButton>a {
         border-radius: 8px; border: 1px solid #d0d0d5; background-color: #FFFFFF;
         color: #1c1c1e !important; padding: 12px 28px; font-weight: 600;
@@ -70,12 +70,49 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- (Engine classes and helper functions are unchanged) ---
+# --- Data Loading and Helper Functions ---
 @st.cache_data
 def load_and_process_data(csv_path):
-    # ... (code is unchanged)
-    pass
-# ... (all other functions are unchanged)
+    try:
+        df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
+    except FileNotFoundError: return None
+    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+    df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
+    df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
+    df['Cleaned Sales'] = df['Monthly Sales'].str.lower().str.replace('k', '000').str.extract(r'(\d+)').astype(float).fillna(0).astype(int)
+    item_engine = ItemIdentifier()
+    quality_engine = ListingQualityEvaluator()
+    score_engine = PrismScoreEvaluator()
+    df['Identified Item'] = df['Title'].apply(item_engine.identify)
+    df['Listing Quality'] = df['Image'].apply(quality_engine.get_score)
+    scores = df.apply(score_engine.get_score, axis=1)
+    df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
+    return df
+
+def get_rating_stars(rating_text):
+    if not isinstance(rating_text, str): return "N/A"
+    match = re.search(r'(\d\.\d)', rating_text)
+    if not match: return "N/A"
+    rating_num = float(match.group(1))
+    full_stars = int(rating_num)
+    half_star = "★" if (rating_num - full_stars) >= 0.8 else ("✫" if (rating_num - full_stars) > 0.2 else "")
+    empty_stars = 5 - full_stars - (1 if half_star else 0)
+    stars = "★" * full_stars + half_star + "☆" * empty_stars
+    return f"{rating_num} {stars}"
+
+def clean_sales_text(sales_text):
+    if not isinstance(sales_text, str): return "N/A"
+    return sales_text.split(" ")[0]
+
+def generate_amazon_link(title):
+    base_url = "https://www.amazon.in/s?k="
+    search_query = urllib.parse.quote_plus(title)
+    return f"{base_url}{search_query}"
+
+def generate_indiamart_link(item_name):
+    base_url = "https://dir.indiamart.com/search.mp?ss="
+    search_query = urllib.parse.quote_plus(item_name)
+    return f"{base_url}{search_query}"
 
 # --- Main App Execution ---
 def main():
@@ -107,7 +144,6 @@ def main():
             st.rerun()
 
     with col2:
-        # --- NEW: Wrapped in a "Card" for better aesthetics ---
         with st.container():
             st.markdown(f"<div class='content-card'>", unsafe_allow_html=True)
             st.markdown(f"### {current_product.get('Title', 'No Title Available')}")
