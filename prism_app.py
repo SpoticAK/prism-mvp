@@ -13,14 +13,14 @@ from prism_score_evaluator import PrismScoreEvaluator
 st.set_page_config(page_title="PRISM", page_icon="🚀", layout="wide")
 st.markdown("""
 <style>
-    /* Base Styles & Typography */
+    /* Base Styles */
     html, body, [class*="st-"] {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-        background-color: #F0F2F6; /* Light grey background */
-        color: #1a1a1a;
+        background-color: #F0F2F6; color: #212121;
     }
     .main .block-container { padding: 1.5rem 2.5rem; }
     h1, h2, h3 { color: #1c1c1e; font-weight: 700; }
+    h1 { font-size: 2.2rem; }
     h2 { font-size: 1.6rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
     h3 { font-size: 1.25rem; font-weight: 600; }
 
@@ -29,7 +29,7 @@ st.markdown("""
     .title-container h1 { font-size: 3.5rem; font-weight: 800; letter-spacing: -3px; }
     .title-container p { font-size: 1.1rem; color: #555; margin-top: -10px; }
 
-    /* CORRECTED: Buttons with professional styling */
+    /* Buttons & Links */
     .stButton>button, .stLinkButton>a {
         border-radius: 8px; border: 1px solid #d0d0d5; background-color: #FFFFFF;
         color: #1c1c1e !important; padding: 12px 28px; font-weight: 600;
@@ -44,7 +44,6 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    /* Metric "Cards" */
     div[data-testid="stMetric"] {
         background-color: #F9F9F9; border-radius: 12px; padding: 20px; 
         border: 1px solid #EAEAEA; transition: box-shadow 0.2s ease-in-out;
@@ -52,6 +51,14 @@ st.markdown("""
     div[data-testid="stMetric"]:hover { box-shadow: 0 8px 15px rgba(0,0,0,0.06); }
     div[data-testid="stMetric"] > label { font-size: 1rem; color: #555555; font-weight: 500; }
     div[data-testid="stMetric"] > div { font-size: 2rem; font-weight: 700; }
+
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] { background-color: #FAFAFA; }
+    .sidebar-item-container {
+        padding: 10px; border-radius: 10px; margin-bottom: 10px; background-color: #FFFFFF;
+    }
+    .remove-btn { color: #aaa; border: none; background: none; font-size: 1.1rem; cursor: pointer; }
+    .remove-btn:hover { color: #ff4b4b; }
 
     /* (Other styles unchanged) */
     .potential-label {
@@ -116,7 +123,6 @@ def generate_indiamart_link(item_name):
 
 # --- Main App Execution ---
 def main():
-    # --- CORRECTED: Centered Title and Subtitle ---
     st.markdown("<div class='title-container'><h1>PRISM</h1><p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
     df = load_and_process_data('products.csv')
@@ -124,23 +130,31 @@ def main():
         st.error("File not found: 'products.csv'. Please ensure it is in your GitHub repository.")
         st.stop()
 
-    if 'product_index' not in st.session_state:
-        st.session_state.product_index = 0
+    # --- RESTORED: Session State for Randomization ---
+    if 'shuffled_indices' not in st.session_state:
+        indices = list(df.index)
+        random.shuffle(indices)
+        st.session_state.shuffled_indices = indices
+        st.session_state.product_pointer = 0
 
     st.caption(f"Loaded {len(df)} products for discovery.")
     st.divider()
 
-    current_product = df.iloc[st.session_state.product_index]
+    # Use the pointer to get the current item from the shuffled list
+    current_shuffled_index = st.session_state.product_pointer
+    current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
+    current_product = df.iloc[current_product_index]
 
     col1, col2 = st.columns([2, 3], gap="large")
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
+        
         nav_col1, nav_col2 = st.columns(2)
-        if nav_col1.button("← Previous", use_container_width=True):
-            st.session_state.product_index = (st.session_state.product_index - 1 + len(df)) % len(df)
+        if nav_col1.button("← Previous Product", use_container_width=True):
+            st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Next →", use_container_width=True):
-            st.session_state.product_index = (st.session_state.product_index + 1) % len(df)
+        if nav_col2.button("Discover Next Product →", use_container_width=True):
+            st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
     with col2:
@@ -150,7 +164,6 @@ def main():
             st.link_button("View on Amazon ↗", url=generate_amazon_link(current_product.get('Title', '')), use_container_width=True)
             st.markdown("---")
             
-            # --- UPDATED: Metrics with Icons ---
             metric_col1, metric_col2 = st.columns(2)
             metric_col1.metric(label="💰 Price", value=f"₹{current_product.get('Price', 0):,.0f}")
             metric_col2.metric(label="📈 Monthly Sales", value=clean_sales_text(current_product.get('Monthly Sales', 'N/A')))
