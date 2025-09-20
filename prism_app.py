@@ -5,11 +5,6 @@ import re
 import math
 import urllib.parse
 import random
-import requests
-import cv2
-import numpy as np
-
-# --- Import Engines ---
 from item_identifier import ItemIdentifier
 from listing_quality_evaluator import ListingQualityEvaluator
 from prism_score_evaluator import PrismScoreEvaluator
@@ -34,16 +29,13 @@ st.markdown("""
     .title-container h1 { font-size: 3.5rem; font-weight: 800; letter-spacing: -3px; }
     .title-container p { font-size: 1.1rem; color: #555; margin-top: -10px; }
 
-    /* --- UPDATED: Buttons with new color scheme --- */
+    /* Buttons & Links */
     .stButton>button, .stLinkButton>a {
-        border-radius: 8px; border: none; background-color: #D92B2F; /* Modern Red */
-        color: #FFFFFF !important; padding: 12px 28px; font-weight: 600;
+        border-radius: 8px; border: 1px solid #d0d0d5; background-color: #FFFFFF;
+        color: #1c1c1e !important; padding: 12px 28px; font-weight: 600;
         text-decoration: none; transition: all 0.2s ease-in-out;
     }
-    .stButton>button:hover, .stLinkButton>a:hover { 
-        background-color: #B92428; /* Darker Red on Hover */
-        color: #FFFFFF !important;
-    }
+    .stButton>button:hover, .stLinkButton>a:hover { background-color: #f0f0f5; border-color: #b0b0b5; }
     
     /* Main Content Card */
     .content-card {
@@ -59,6 +51,14 @@ st.markdown("""
     div[data-testid="stMetric"]:hover { box-shadow: 0 8px 15px rgba(0,0,0,0.06); }
     div[data-testid="stMetric"] > label { font-size: 1rem; color: #555555; font-weight: 500; }
     div[data-testid="stMetric"] > div { font-size: 2rem; font-weight: 700; }
+
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] { background-color: #FAFAFA; }
+    .sidebar-item-container {
+        padding: 10px; border-radius: 10px; margin-bottom: 10px; background-color: #FFFFFF;
+    }
+    .remove-btn { color: #aaa; border: none; background: none; font-size: 1.1rem; cursor: pointer; }
+    .remove-btn:hover { color: #ff4b4b; }
 
     /* (Other styles unchanged) */
     .potential-label {
@@ -77,12 +77,49 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- (Engine classes and all other functions are unchanged) ---
+# --- Data Loading and Helper Functions ---
 @st.cache_data
 def load_and_process_data(csv_path):
-    # ... (code is unchanged)
-    pass
-# ... (all other functions are unchanged)
+    try:
+        df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
+    except FileNotFoundError: return None
+    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+    df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
+    df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
+    df['Cleaned Sales'] = df['Monthly Sales'].str.lower().str.replace('k', '000').str.extract(r'(\d+)').astype(float).fillna(0).astype(int)
+    item_engine = ItemIdentifier()
+    quality_engine = ListingQualityEvaluator()
+    score_engine = PrismScoreEvaluator()
+    df['Identified Item'] = df['Title'].apply(item_engine.identify)
+    df['Listing Quality'] = df['Image'].apply(quality_engine.get_score)
+    scores = df.apply(score_engine.get_score, axis=1)
+    df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
+    return df
+
+def get_rating_stars(rating_text):
+    if not isinstance(rating_text, str): return "N/A"
+    match = re.search(r'(\d\.\d)', rating_text)
+    if not match: return "N/A"
+    rating_num = float(match.group(1))
+    full_stars = int(rating_num)
+    half_star = "★" if (rating_num - full_stars) >= 0.8 else ("✫" if (rating_num - full_stars) > 0.2 else "")
+    empty_stars = 5 - full_stars - (1 if half_star else 0)
+    stars = "★" * full_stars + half_star + "☆" * empty_stars
+    return f"{rating_num} {stars}"
+
+def clean_sales_text(sales_text):
+    if not isinstance(sales_text, str): return "N/A"
+    return sales_text.split(" ")[0]
+
+def generate_amazon_link(title):
+    base_url = "https://www.amazon.in/s?k="
+    search_query = urllib.parse.quote_plus(title)
+    return f"{base_url}{search_query}"
+
+def generate_indiamart_link(item_name):
+    base_url = "https://dir.indiamart.com/search.mp?ss="
+    search_query = urllib.parse.quote_plus(item_name)
+    return f"{base_url}{search_query}"
 
 # --- Main App Execution ---
 def main():
@@ -93,23 +130,31 @@ def main():
         st.error("File not found: 'products.csv'. Please ensure it is in your GitHub repository.")
         st.stop()
 
-    if 'product_index' not in st.session_state:
-        st.session_state.product_index = 0
+    # --- RESTORED: Session State for Randomization ---
+    if 'shuffled_indices' not in st.session_state:
+        indices = list(df.index)
+        random.shuffle(indices)
+        st.session_state.shuffled_indices = indices
+        st.session_state.product_pointer = 0
 
     st.caption(f"Loaded {len(df)} products for discovery.")
     st.divider()
-    
-    current_product = df.iloc[st.session_state.product_index]
+
+    # Use the pointer to get the current item from the shuffled list
+    current_shuffled_index = st.session_state.product_pointer
+    current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
+    current_product = df.iloc[current_product_index]
 
     col1, col2 = st.columns([2, 3], gap="large")
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
+        
         nav_col1, nav_col2 = st.columns(2)
-        if nav_col1.button("← Previous", use_container_width=True):
-            st.session_state.product_index = (st.session_state.product_index - 1 + len(df)) % len(df)
+        if nav_col1.button("← Previous Product", use_container_width=True):
+            st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Next →", use_container_width=True):
-            st.session_state.product_index = (st.session_state.product_index + 1) % len(df)
+        if nav_col2.button("Discover Next Product →", use_container_width=True):
+            st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
     with col2:
