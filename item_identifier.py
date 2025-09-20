@@ -7,17 +7,23 @@ class ItemIdentifier:
     rule-based logic. No external NLP libraries are needed.
     """
     def __init__(self):
+        # A comprehensive, hardcoded list of words to ignore.
         self._noise_words = {
-            'stylish', 'comfortable', 'premium', 'high', 'quality', 'heavy', 'duty', 'waterproof', 'convertible', 
-            'streachable', 'full', 'loose', 'relaxed', 'retractable', 'handheld', 'rechargeable', 'portable', 
-            'soft', 'stretchy', 'cushioned', 'breathable', 'sturdy', 'micronized', 'new', 'complete', 
-            "men's", "women's", "boy's", "girl's", 'mens', 'womens', 'men', 'women', 'kids', 'man', 'woman', 
-            'boys', 'girls', 'unisex', 'adult', 'home', 'gym', 'workout', 'exercise', 'training', 'gear', 'for', 
-            'accessories', 'powerlifting', 'solid', 'combo', 'kit', 'pack', 'set', 'pcs', 'of', 'gram', 'serves', 
-            'piece', 'pieces', 'anti', 'slip', 'multi', 'with', 'and', 'the', 'a', 'in', 'per', 'ideal', 
-            'everyday', 'use', 'black', 'white', 'red', 'blue', 'green', 'multicolor', 'large', 'medium', 
-            'small', 'size', 'fit', 'fitness', 'toning', 'band', 'bands', 'cover', 'support'
+            'stylish', 'comfortable', 'premium', 'high', 'quality', 'heavy', 'duty',
+            'waterproof', 'convertible', 'streachable', 'full', 'loose', 'relaxed',
+            'retractable', 'handheld', 'rechargeable', 'portable', 'soft', 'stretchy',
+            'cushioned', 'breathable', 'sturdy', 'micronized', 'new', 'complete',
+            "men's", "women's", "boy's", "girl's", 'mens', 'womens', 'men',
+            'women', 'kids', 'man', 'woman', 'boys', 'girls', 'unisex', 'adult',
+            'home', 'gym', 'workout', 'exercise', 'training', 'gear', 'for',
+            'accessories', 'powerlifting', 'solid', 'combo', 'kit', 'pack', 'set',
+            'pcs', 'of', 'gram', 'serves', 'piece', 'pieces', 'anti', 'slip', 'multi',
+            'with', 'and', 'the', 'a', 'in', 'per', 'ideal', 'everyday', 'use',
+            'black', 'white', 'red', 'blue', 'green', 'multicolor',
+            'large', 'medium', 'small', 'size', 'fit',
+            'fitness', 'toning', 'band', 'bands', 'cover', 'support'
         }
+        # Regex to find and remove specifications like "20L", "500ML", "4mm"
         self._model_number_pattern = re.compile(r'\b[a-zA-Z]+\d+[a-zA-Z0-9]*\b|\b\d+[a-zA-Z]+\b')
 
     def identify(self, title: str) -> str:
