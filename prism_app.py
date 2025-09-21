@@ -31,12 +31,12 @@ st.markdown("""
     h2 { font-size: 1.6rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
     h3 { font-size: 1.25rem; font-weight: 600; }
 
-    /* Centered and Styled Title */
-    .title-container { text-align: center; margin-bottom: 1.5rem; }
-    .title-container h1 { font-size: 3.5rem; font-weight: 800; letter-spacing: -3px; }
-    .title-container p { font-size: 1.1rem; color: #555; margin-top: -10px; }
+    /* Centered Logo and Subtitle */
+    .logo-container { text-align: center; margin-bottom: 1.5rem; }
+    .logo-container img { max-width: 250px; margin-bottom: 0.5rem; }
+    .logo-container p { font-size: 1.1rem; color: #555; margin-top: -10px; }
 
-    /* --- UPDATED: Buttons with new color and font --- */
+    /* --- CORRECTED: Buttons with new color and font --- */
     .stButton>button, .stLinkButton>a {
         border-radius: 8px; border: none; background-color: #E65C5F; /* Fainter Red */
         color: #FFFFFF !important; /* White Text */
@@ -49,8 +49,9 @@ st.markdown("""
         background-color: #D92B2F; /* Darker Red on Hover */
         color: #FFFFFF !important;
     }
+    /* --- CRITICAL FIX for Button Text Background --- */
     .stButton>button div, .stLinkButton>a div {
-        background-color: transparent; /* Fix for white box on text */
+        background-color: transparent;
     }
     
     /* Main Content Card */
@@ -81,7 +82,7 @@ st.markdown("""
     .missing-data-flag { font-size: 0.8rem; color: #6c757d; padding-top: 5px; }
     .score-bar-container { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
     .score-bar-background { background-color: #e9ecef; border-radius: 0.5rem; height: 10px; flex-grow: 1; }
-    .score-bar-foreground { background-color: #D92B2F; height: 10px; border-radius: 0.5rem; } /* Red score bar */
+    .score-bar-foreground { background-color: #E65C5F; height: 10px; border-radius: 0.5rem; } /* Red score bar */
     .score-text { font-size: 1rem; font-weight: 600; color: #555555; }
     .analysis-details { line-height: 1.8; }
 </style>
@@ -133,7 +134,9 @@ def generate_indiamart_link(item_name):
 
 # --- Main App Execution ---
 def main():
-    st.markdown("<div class='title-container'><h1>PRISM</h1><p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
+    st.image("prism_logo.png", width=250)
+    st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
     df = load_and_process_data('products.csv')
     if df is None:
@@ -150,7 +153,6 @@ def main():
     st.caption(f"Loaded {len(df)} products for discovery.")
     st.divider()
     
-    # Use the pointer to get the current item from the shuffled list
     current_shuffled_index = st.session_state.product_pointer
     current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
     current_product = df.iloc[current_product_index]
@@ -159,10 +161,10 @@ def main():
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
         nav_col1, nav_col2 = st.columns(2)
-        if nav_col1.button("← Previous Product", use_container_width=True):
+        if nav_col1.button("← Previous", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Discover Next Product →", use_container_width=True):
+        if nav_col2.button("Next →", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
