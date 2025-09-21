@@ -15,7 +15,7 @@ from listing_quality_evaluator import ListingQualityEvaluator
 from prism_score_evaluator import PrismScoreEvaluator
 
 # --- Page Configuration and CSS ---
-st.set_page_config(page_title="PRISM", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="PRISM", page_icon="🔥", layout="wide")
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -159,7 +159,7 @@ def main():
         if nav_col1.button("← Previous Product", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Discover Next Product →", use_container_width=True):
+        if nav_col2.button(" Next Product →", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
