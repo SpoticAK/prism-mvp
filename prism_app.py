@@ -40,10 +40,20 @@ st.markdown("""
     .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
     hr { background-color: #EAEAEA; }
 
-    /* Centered Logo and Subtitle */
-    .logo-container { text-align: center; margin-bottom: 1.5rem; }
-    .logo-container img { max-width: 400px; }
-    .logo-container p { font-size: 1.1rem; color: #555; margin-top: -10px; }
+    /* --- CORRECTED: Logo Container for perfect centering --- */
+    .logo-container {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        margin-bottom: 2rem;
+    }
+    .logo-container p { 
+        font-size: 1.1rem; 
+        color: #555; 
+        margin-top: 0.5rem; 
+    }
     
     /* Potential Label & Score Bar Styling */
     .potential-label {
