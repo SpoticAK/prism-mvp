@@ -87,14 +87,6 @@ st.markdown("""
     .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
     hr { background-color: #EAEAEA; }
 
-    /* Sidebar Styling */
-    [data-testid="stSidebar"] { background-color: #FAFAFA; }
-    .sidebar-item-container {
-        padding: 10px; border-radius: 10px; margin-bottom: 10px; background-color: #FFFFFF;
-    }
-    .remove-btn { color: #aaa; border: none; background: none; font-size: 1.1rem; cursor: pointer; }
-    .remove-btn:hover { color: #ff4b4b; }
-
     /* Potential Label & Score Bar Styling */
     .potential-label {
         padding: 6px 14px; border-radius: 10px; font-weight: 700;
