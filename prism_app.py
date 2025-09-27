@@ -45,7 +45,7 @@ st.markdown("""
     .logo-container p { 
         font-size: 1.1rem; 
         color: #555; 
-        margin-top: -30px; 
+        margin-top: -90px; 
     }
 
     h1, h2, h3 { color: #1c1c1e; font-weight: 700; }
