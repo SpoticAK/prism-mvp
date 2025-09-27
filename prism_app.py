@@ -5,6 +5,11 @@ import re
 import math
 import urllib.parse
 import random
+import requests
+import cv2
+import numpy as np
+
+# --- Import Engines ---
 from item_identifier import ItemIdentifier
 from listing_quality_evaluator import ListingQualityEvaluator
 from prism_score_evaluator import PrismScoreEvaluator
@@ -15,32 +20,56 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    /* Base Styles */
+    /* Base Styles & Typography */
     html, body, [class*="st-"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background-color: #F0F2F6; color: #212121;
+        background-color: #F0F2F6; 
+        color: #1a1a1a;
     }
-    .main .block-container { padding-top: 1.5rem; }
+    .main .block-container { 
+        padding-top: 2rem; 
+        padding-bottom: 2rem; 
+        padding-left: 2.5rem;
+        padding-right: 2.5rem;
+    }
     
     /* Centered Logo and Subtitle */
-    .logo-container { text-align: center; margin-bottom: 2rem; }
-    .logo-container img { max-width: 400px; }
-    .logo-container p { font-size: 1.1rem; color: #555; margin-top: -10px; }
+    .logo-container { 
+        text-align: center; 
+        margin-bottom: 2rem; 
+    }
+    .logo-container img { 
+        max-width: 250px; 
+        margin-bottom: 0.5rem; 
+    }
+    .logo-container p { 
+        font-size: 1.1rem; 
+        color: #555; 
+        margin-top: -10px; 
+    }
 
-    /* Buttons */
+    h1, h2, h3 { color: #1c1c1e; font-weight: 700; }
     .stButton>button, .stLinkButton>a {
-        border-radius: 8px; border: none; background-color: #E65C5F;
+        border-radius: 8px; border: none; background-color: #E65C5F; 
         color: #FFFFFF !important; padding: 12px 28px; font-weight: 600;
         font-size: 1.1rem; font-family: 'Inter', sans-serif;
         text-decoration: none; transition: all 0.2s ease-in-out;
     }
-    .stButton>button:hover, .stLinkButton>a:hover { background-color: #D92B2F; }
-    .stButton>button div, .stLinkButton>a div { background-color: transparent; color: #FFFFFF; }
-    
-    /* Content Card */
+    .stButton>button:hover, .stLinkButton>a:hover { 
+        background-color: #D92B2F;
+        color: #FFFFFF !important;
+    }
+    .stButton>button div, .stLinkButton>a div {
+        background-color: transparent;
+    }
     .content-card {
         background-color: #FFFFFF; border-radius: 12px; padding: 25px;
         border: 1px solid #EAEAEA; box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+        margin-bottom: 20px;
+    }
+    div[data-testid="stMetric"] {
+        background-color: #F9F9F9; border-radius: 12px; padding: 20px; 
+        border: 1px solid #EAEAEA; transition: box-shadow 0.2s ease-in-out;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -64,7 +93,7 @@ def load_and_process_data(csv_path):
     df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
     return df
 
-def get_rating_stars(rating_text):
+def get_rating_stars(rating_text: str):
     if not isinstance(rating_text, str): return "N/A"
     match = re.search(r'(\d\.\d)', rating_text)
     if not match: return "N/A"
@@ -75,26 +104,26 @@ def get_rating_stars(rating_text):
     stars = "★" * full_stars + half_star + "☆" * empty_stars
     return f"{rating_num} {stars}"
 
-def clean_sales_text(sales_text):
+def clean_sales_text(sales_text: str):
     if not isinstance(sales_text, str): return "N/A"
     return sales_text.split(" ")[0]
 
-def generate_amazon_link(title):
+def generate_amazon_link(title: str):
     base_url = "https://www.amazon.in/s?k="
     search_query = urllib.parse.quote_plus(title)
     return f"{base_url}{search_query}"
 
-def generate_indiamart_link(item_name):
+def generate_indiamart_link(item_name: str):
     base_url = "https://dir.indiamart.com/search.mp?ss="
     search_query = urllib.parse.quote_plus(item_name)
     return f"{base_url}{search_query}"
 
 # --- Main App Execution ---
 def main():
-    with st.container():
-        st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
-        st.image("prism_logo_new.png")
-        st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
+    st.image("prism_logo_new.png")
+    st.markdown("<p>Product Research and Integrated Supply Module</p>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
     
     df = load_and_process_data('products.csv')
     if df is None:
@@ -118,10 +147,10 @@ def main():
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
         nav_col1, nav_col2 = st.columns(2)
-        if nav_col1.button("← Previous", use_container_width=True):
+        if nav_col1.button("← Previous Product", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Next →", use_container_width=True):
+        if nav_col2.button("Discover Next Product →", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
