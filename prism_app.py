@@ -192,15 +192,15 @@ def main():
             st.markdown("---")
             
             metric_col1, metric_col2 = st.columns(2)
-            metric_col1.metric(label="💰 Price", value=f"₹{current_product.get('Price', 0):,.0f}")
-            metric_col2.metric(label="📈 Monthly Sales", value=clean_sales_text(current_product.get('Monthly Sales', 'N/A')))
+            metric_col1.metric(label="Price", value=f"₹{current_product.get('Price', 0):,.0f}")
+            metric_col2.metric(label="Monthly Sales", value=clean_sales_text(current_product.get('Monthly Sales', 'N/A')))
             
             st.markdown("### ⭐ Rating")
             st.markdown(f"<h2 style='color: #212121; font-weight: 600;'>{get_rating_stars(current_product.get('Ratings', 'N/A'))}</h2>", unsafe_allow_html=True)
             st.markdown(f"Based on **{int(current_product.get('Review', 0)):,}** reviews.")
             st.divider()
 
-            st.subheader("📊 PRISM Analysis")
+            st.subheader("PRISM Analysis")
             potential = current_product.get('Potential', 'Low Potential')
             potential_class = potential.lower().replace(" ", "-")
             prism_score = int(current_product.get('PRISM Score', 0))
