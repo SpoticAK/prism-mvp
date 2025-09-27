@@ -18,28 +18,22 @@ from prism_score_evaluator import PrismScoreEvaluator
 st.set_page_config(page_title="PRISM", page_icon="🚀", layout="wide")
 st.markdown("""
 <style>
-    /* Base Styles */
-    html, body, [class*="st-"] {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-        background-color: #F0F2F6; color: #212121;
-    }
-    .main .block-container { padding: 1rem 2rem; }
-    h1, h2, h3 { color: #1c1c1e; font-weight: 600; }
-    h1 { font-size: 2rem; } h2 { font-size: 1.5rem; } h3 { font-size: 1.15rem; }
-    .stButton>button, .stLinkButton>a {
-        border-radius: 10px; border: 1px solid #d0d0d5; background-color: #f0f0f5;
-        color: #1c1c1e !important; padding: 10px 24px; font-weight: 500;
-        text-decoration: none; transition: all 0.2s ease-in-out;
-    }
-    .stButton>button:hover, .stLinkButton>a:hover { background-color: #e0e0e5; border-color: #c0c0c5; }
-    div[data-testid="stMetric"] {
-        background-color: #F9F9F9; border-radius: 12px; padding: 20px; border: 1px solid #EAEAEA;
-    }
-    div[data-testid="stMetric"] > label { font-size: 0.9rem; color: #555555; }
-    div[data-testid="stMetric"] > div { font-size: 1.75rem; font-weight: 600; }
-    .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
-    hr { background-color: #EAEAEA; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+    /* Base Styles & Typography */
+    html, body, [class*="st-"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #F0F2F6; 
+        color: #1a1a1a;
+    }
+    /* --- FIX: Reduce top padding --- */
+    .main .block-container { 
+        padding-top: 2rem; 
+        padding-bottom: 2rem; 
+        padding-left: 2.5rem;
+        padding-right: 2.5rem;
+    }
+    
     /* --- CORRECTED: Logo Container for perfect centering --- */
     .logo-container {
         width: 100%;
@@ -49,12 +43,58 @@ st.markdown("""
         flex-direction: column;
         margin-bottom: 2rem;
     }
+    .logo-container img { 
+        max-width: 400px; 
+        margin-bottom: 0.5rem; 
+    }
     .logo-container p { 
         font-size: 1.1rem; 
         color: #555; 
-        margin-top: 0.5rem; 
+        margin-top: -10px; 
+    }
+
+    /* Buttons with correct color scheme */
+    .stButton>button, .stLinkButton>a {
+        border-radius: 8px; border: none; background-color: #E65C5F; /* Fainter Red */
+        color: #FFFFFF !important; /* White Text */
+        padding: 12px 28px; font-weight: 600;
+        font-size: 1.1rem; 
+        font-family: 'Inter', sans-serif;
+        text-decoration: none; transition: all 0.2s ease-in-out;
+    }
+    .stButton>button:hover, .stLinkButton>a:hover { 
+        background-color: #D92B2F; /* Darker Red on Hover */
+        color: #FFFFFF !important;
+    }
+    .stButton>button div, .stLinkButton>a div {
+        background-color: transparent;
     }
     
+    /* Main Content Card */
+    .content-card {
+        background-color: #FFFFFF; border-radius: 12px; padding: 25px;
+        border: 1px solid #EAEAEA; box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+        margin-bottom: 20px;
+    }
+    
+    div[data-testid="stMetric"] {
+        background-color: #F9F9F9; border-radius: 12px; padding: 20px; 
+        border: 1px solid #EAEAEA; transition: box-shadow 0.2s ease-in-out;
+    }
+    div[data-testid="stMetric"]:hover { box-shadow: 0 8px 15px rgba(0,0,0,0.06); }
+    div[data-testid="stMetric"] > label { font-size: 1rem; color: #555555; font-weight: 500; }
+    div[data-testid="stMetric"] > div { font-size: 2rem; font-weight: 700; }
+    .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
+    hr { background-color: #EAEAEA; }
+
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] { background-color: #FAFAFA; }
+    .sidebar-item-container {
+        padding: 10px; border-radius: 10px; margin-bottom: 10px; background-color: #FFFFFF;
+    }
+    .remove-btn { color: #aaa; border: none; background: none; font-size: 1.1rem; cursor: pointer; }
+    .remove-btn:hover { color: #ff4b4b; }
+
     /* Potential Label & Score Bar Styling */
     .potential-label {
         padding: 6px 14px; border-radius: 10px; font-weight: 700;
@@ -66,7 +106,7 @@ st.markdown("""
     .missing-data-flag { font-size: 0.8rem; color: #6c757d; padding-top: 5px; }
     .score-bar-container { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
     .score-bar-background { background-color: #e9ecef; border-radius: 0.5rem; height: 10px; flex-grow: 1; }
-    .score-bar-foreground { background-color: #007bff; height: 10px; border-radius: 0.5rem; }
+    .score-bar-foreground { background-color: #E65C5F; height: 10px; border-radius: 0.5rem; } /* Red score bar */
     .score-text { font-size: 1rem; font-weight: 600; color: #555555; }
     .analysis-details { line-height: 1.8; }
 </style>
@@ -120,24 +160,76 @@ def generate_indiamart_link(item_name):
 def main():
     with st.container():
         st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
-        # --- CORRECTED FILENAME ---
         st.image("prism_logo_new.png")
         st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
     df = load_and_process_data('products.csv')
     if df is None:
-        st.error("File not found: 'products.csv'. Please ensure it's in your GitHub repository.")
+        st.error("File not found: 'products.csv'. Please ensure it is in your GitHub repository.")
         st.stop()
 
-    if 'shuffled_indices' not in st.session_state:
+    # --- CORRECTED Session State Initialization ---
+    if 'app_loaded' not in st.session_state:
+        st.session_state.app_loaded = True
+        
         indices = list(df.index)
         random.shuffle(indices)
         st.session_state.shuffled_indices = indices
-        st.session_state.product_pointer = 0
+        
+        try:
+            query_params = st.query_params.to_dict()
+            saved_from_url = [int(i) for i in query_params.get("saved", [])]
+            st.session_state.saved_products = list(dict.fromkeys(saved_from_url))
+            st.session_state.notes = {int(k.split('_')[1]): v[0] for k, v in query_params.items() if k.startswith("note_")}
+        except:
+             st.session_state.saved_products, st.session_state.notes = [], {}
+        
+        if st.session_state.saved_products:
+            first_saved_index = st.session_state.saved_products[0]
+            if first_saved_index in st.session_state.shuffled_indices:
+                 st.session_state.product_pointer = st.session_state.shuffled_indices.index(first_saved_index)
+            else:
+                 st.session_state.product_pointer = 0
+        else:
+            st.session_state.product_pointer = 0
 
     st.caption(f"Loaded {len(df)} products for discovery.")
     st.divider()
     
+    with st.sidebar:
+        st.subheader("Your Shortlist")
+        if not st.session_state.saved_products:
+            st.info("Click '⭐️ Save' to add items here.")
+        else:
+            for saved_index in st.session_state.saved_products[:]:
+                product = df.iloc[saved_index]
+                with st.container():
+                    st.markdown("<div class='sidebar-item-container'>", unsafe_allow_html=True)
+                    col1, col2 = st.columns([5, 1])
+                    with col1:
+                        if st.button(f"img_{saved_index}", key=f"img_{saved_index}"):
+                            st.session_state.product_pointer = st.session_state.shuffled_indices.index(saved_index)
+                            st.rerun()
+                        st.image(product.get('Image'), width=60, caption=product.get('Title')[:25]+"...")
+                    with col2:
+                        if st.button("❌", key=f"remove_{saved_index}", help="Remove from shortlist"):
+                            st.session_state.saved_products.remove(saved_index)
+                            st.session_state.notes.pop(saved_index, None)
+                            st.query_params["saved"] = [str(i) for i in st.session_state.saved_products]
+                            st.query_params.pop(f"note_{saved_index}", None)
+                            st.rerun()
+                    
+                    note_text = st.text_input("Add a note...", key=f"note_input_{saved_index}", value=st.session_state.notes.get(saved_index, ""))
+                    if note_text != st.session_state.notes.get(saved_index, ""):
+                        st.session_state.notes[saved_index] = note_text
+                        st.query_params[f"note_{saved_index}"] = note_text
+                        st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
+            if st.button("Clear All", use_container_width=True, type="secondary"):
+                st.session_state.saved_products, st.session_state.notes = [], {}
+                st.query_params.clear()
+                st.rerun()
+
     current_shuffled_index = st.session_state.product_pointer
     current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
     current_product = df.iloc[current_product_index]
@@ -187,7 +279,6 @@ def main():
             
             st.markdown(f"<div class='potential-label {potential_class}'>{potential}</div>", unsafe_allow_html=True)
             st.markdown("---")
-            
             st.markdown(f"""
             <div class='analysis-details'>
                 <b>Identified Item:</b> {identified_item}<br>
