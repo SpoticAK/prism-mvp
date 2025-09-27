@@ -19,8 +19,7 @@ st.set_page_config(page_title="PRISM", page_icon="🚀", layout="wide")
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-    /* Base Styles & Typography */
+    /* Base Styles */
     html, body, [class*="st-"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         background-color: #F0F2F6; 
@@ -47,8 +46,9 @@ st.markdown("""
         color: #555; 
         margin-top: -10px; 
     }
-
     h1, h2, h3 { color: #1c1c1e; font-weight: 700; }
+    h2 { font-size: 1.6rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
+    h3 { font-size: 1.25rem; font-weight: 600; }
     .stButton>button, .stLinkButton>a {
         border-radius: 8px; border: none; background-color: #E65C5F; 
         color: #FFFFFF !important; padding: 12px 28px; font-weight: 600;
@@ -71,6 +71,19 @@ st.markdown("""
         background-color: #F9F9F9; border-radius: 12px; padding: 20px; 
         border: 1px solid #EAEAEA; transition: box-shadow 0.2s ease-in-out;
     }
+    .potential-label {
+        padding: 6px 14px; border-radius: 10px; font-weight: 700;
+        font-size: 1.1rem; display: inline-block; text-align: center;
+    }
+    .high-potential { background-color: #d4edda; color: #155724; }
+    .moderate-potential { background-color: #fff3cd; color: #856404; }
+    .low-potential { background-color: #f8d7da; color: #721c24; }
+    .missing-data-flag { font-size: 0.8rem; color: #6c757d; padding-top: 5px; }
+    .score-bar-container { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+    .score-bar-background { background-color: #e9ecef; border-radius: 0.5rem; height: 10px; flex-grow: 1; }
+    .score-bar-foreground { background-color: #E65C5F; height: 10px; border-radius: 0.5rem; }
+    .score-text { font-size: 1rem; font-weight: 600; color: #555555; }
+    .analysis-details { line-height: 1.8; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -93,7 +106,7 @@ def load_and_process_data(csv_path):
     df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
     return df
 
-def get_rating_stars(rating_text: str):
+def get_rating_stars(rating_text):
     if not isinstance(rating_text, str): return "N/A"
     match = re.search(r'(\d\.\d)', rating_text)
     if not match: return "N/A"
@@ -104,16 +117,16 @@ def get_rating_stars(rating_text: str):
     stars = "★" * full_stars + half_star + "☆" * empty_stars
     return f"{rating_num} {stars}"
 
-def clean_sales_text(sales_text: str):
+def clean_sales_text(sales_text):
     if not isinstance(sales_text, str): return "N/A"
     return sales_text.split(" ")[0]
 
-def generate_amazon_link(title: str):
+def generate_amazon_link(title):
     base_url = "https://www.amazon.in/s?k="
     search_query = urllib.parse.quote_plus(title)
     return f"{base_url}{search_query}"
 
-def generate_indiamart_link(item_name: str):
+def generate_indiamart_link(item_name):
     base_url = "https://dir.indiamart.com/search.mp?ss="
     search_query = urllib.parse.quote_plus(item_name)
     return f"{base_url}{search_query}"
@@ -121,13 +134,12 @@ def generate_indiamart_link(item_name: str):
 # --- Main App Execution ---
 def main():
     st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
-    st.image("prism_logo_new.png")
-    st.markdown("<p>Product Research and Integrated Supply Module</p>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.image("prism_logo.png", width=250)
+    st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
     df = load_and_process_data('products.csv')
     if df is None:
-        st.error("File not found: 'products.csv'. Please ensure it's in your GitHub repository.")
+        st.error("File not found: 'products.csv'. Please ensure it is in your GitHub repository.")
         st.stop()
 
     if 'shuffled_indices' not in st.session_state:
