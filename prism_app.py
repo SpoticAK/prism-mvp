@@ -23,7 +23,7 @@ st.markdown("""
     /* Base Styles & Typography */
     html, body, [class*="st-"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background-color: #F0F2F6; 
+        background-color: #FFFFFF; 
         color: #1a1a1a;
     }
     .main .block-container { 
@@ -45,7 +45,7 @@ st.markdown("""
     .logo-container p { 
         font-size: 1.1rem; 
         color: #555; 
-        margin-top: -10px; 
+        margin-top: -30px; 
     }
 
     h1, h2, h3 { color: #1c1c1e; font-weight: 700; }
