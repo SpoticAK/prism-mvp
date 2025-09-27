@@ -27,7 +27,7 @@ st.markdown("""
         color: #1a1a1a;
     }
     .main .block-container { 
-        padding-top: 2rem; 
+        padding-top: 0rem; 
         padding-bottom: 2rem; 
         padding-left: 2.5rem;
         padding-right: 2.5rem;
@@ -39,7 +39,7 @@ st.markdown("""
         margin-bottom: 2rem; 
     }
     .logo-container img { 
-        max-width: 400px; 
+        max-width: 200px; 
         margin-bottom: 0.5rem; 
     }
     .logo-container p { 
