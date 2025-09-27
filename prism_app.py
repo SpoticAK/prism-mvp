@@ -23,49 +23,63 @@ st.markdown("""
     }
     /* --- FIX: Reduce top padding --- */
     .main .block-container { 
-        padding-top: 2rem; 
+        padding-top: 1.5rem; 
         padding-bottom: 2rem; 
     }
     
     /* Centered Logo and Subtitle */
-    .logo-container { 
-        text-align: center; 
-        margin-bottom: 2rem; 
-    }
-    .logo-container img { 
-        max-width: 250px; 
-        margin-bottom: 0.5rem; 
-    }
-    .logo-container p { 
-        font-size: 1.1rem; 
-        color: #555; 
-        margin-top: -10px; 
-    }
+    .logo-container { text-align: center; margin-bottom: 1.5rem; }
+    .logo-container img { max-width: 250px; margin-bottom: 0.5rem; }
+    .logo-container p { font-size: 1.1rem; color: #555; margin-top: -10px; }
 
-    /* (Other styles are unchanged) */
-    h1, h2, h3 { color: #1c1c1e; font-weight: 700; }
+    /* Buttons with correct color scheme */
     .stButton>button, .stLinkButton>a {
-        border-radius: 8px; border: none; background-color: #E65C5F; 
-        color: #FFFFFF !important; padding: 12px 28px; font-weight: 600;
-        font-size: 1.1rem; font-family: 'Inter', sans-serif;
+        border-radius: 8px; border: none; background-color: #E65C5F; /* Fainter Red */
+        color: #FFFFFF !important; /* White Text */
+        padding: 12px 28px; font-weight: 600;
+        font-size: 1.1rem; 
+        font-family: 'Inter', sans-serif;
         text-decoration: none; transition: all 0.2s ease-in-out;
     }
     .stButton>button:hover, .stLinkButton>a:hover { 
-        background-color: #D92B2F;
+        background-color: #D92B2F; /* Darker Red on Hover */
         color: #FFFFFF !important;
     }
     .stButton>button div, .stLinkButton>a div {
         background-color: transparent;
     }
+    
+    /* Main Content Card */
     .content-card {
         background-color: #FFFFFF; border-radius: 12px; padding: 25px;
         border: 1px solid #EAEAEA; box-shadow: 0 4px 6px rgba(0,0,0,0.04);
         margin-bottom: 20px;
     }
+    
     div[data-testid="stMetric"] {
         background-color: #F9F9F9; border-radius: 12px; padding: 20px; 
         border: 1px solid #EAEAEA; transition: box-shadow 0.2s ease-in-out;
     }
+    div[data-testid="stMetric"]:hover { box-shadow: 0 8px 15px rgba(0,0,0,0.06); }
+    div[data-testid="stMetric"] > label { font-size: 1rem; color: #555555; font-weight: 500; }
+    div[data-testid="stMetric"] > div { font-size: 2rem; font-weight: 700; }
+    .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
+    hr { background-color: #EAEAEA; }
+
+    /* Potential Label & Score Bar Styling */
+    .potential-label {
+        padding: 6px 14px; border-radius: 10px; font-weight: 700;
+        font-size: 1.1rem; display: inline-block; text-align: center;
+    }
+    .high-potential { background-color: #d4edda; color: #155724; }
+    .moderate-potential { background-color: #fff3cd; color: #856404; }
+    .low-potential { background-color: #f8d7da; color: #721c24; }
+    .missing-data-flag { font-size: 0.8rem; color: #6c757d; padding-top: 5px; }
+    .score-bar-container { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+    .score-bar-background { background-color: #e9ecef; border-radius: 0.5rem; height: 10px; flex-grow: 1; }
+    .score-bar-foreground { background-color: #E65C5F; height: 10px; border-radius: 0.5rem; } /* Red score bar */
+    .score-text { font-size: 1rem; font-weight: 600; color: #555555; }
+    .analysis-details { line-height: 1.8; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -214,26 +228,31 @@ def main():
     
     df = load_and_process_data('products.csv')
     if df is None:
-        st.error("File not found: 'products.csv'. Please ensure it's in your GitHub repository.")
+        st.error("File not found: 'products.csv'. Please ensure it is in your GitHub repository.")
         st.stop()
 
-    if 'product_index' not in st.session_state:
-        st.session_state.product_index = 0
+    if 'shuffled_indices' not in st.session_state:
+        indices = list(df.index)
+        random.shuffle(indices)
+        st.session_state.shuffled_indices = indices
+        st.session_state.product_pointer = 0
 
     st.caption(f"Loaded {len(df)} products for discovery.")
     st.divider()
 
-    current_product = df.iloc[st.session_state.product_index]
+    current_shuffled_index = st.session_state.product_pointer
+    current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
+    current_product = df.iloc[current_product_index]
 
     col1, col2 = st.columns([2, 3], gap="large")
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
         nav_col1, nav_col2 = st.columns(2)
         if nav_col1.button("← Previous", use_container_width=True):
-            st.session_state.product_index = (st.session_state.product_index - 1 + len(df)) % len(df)
+            st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
         if nav_col2.button("Next →", use_container_width=True):
-            st.session_state.product_index = (st.session_state.product_index + 1) % len(df)
+            st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
     with col2:
