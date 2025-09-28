@@ -8,6 +8,7 @@ import random
 import requests
 import cv2
 import numpy as np
+import os
 
 # --- Import Engines ---
 from item_identifier import ItemIdentifier
@@ -20,14 +21,14 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    /* Base Styles & Typography */
+    /* Base Styles */
     html, body, [class*="st-"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background-color: #FFFFFF; 
+        background-color: #F0F2F6; 
         color: #1a1a1a;
     }
     .main .block-container { 
-        padding-top: 0rem; 
+        padding-top: 2rem; 
         padding-bottom: 2rem; 
         padding-left: 2.5rem;
         padding-right: 2.5rem;
@@ -39,13 +40,13 @@ st.markdown("""
         margin-bottom: 2rem; 
     }
     .logo-container img { 
-        max-width: 200px; 
+        max-width: 250px; 
         margin-bottom: 0.5rem; 
     }
     .logo-container p { 
         font-size: 1.1rem; 
         color: #555; 
-        margin-top: -90px; 
+        margin-top: -10px; 
     }
 
     h1, h2, h3 { color: #1c1c1e; font-weight: 700; }
@@ -67,7 +68,6 @@ st.markdown("""
     }
     .stButton>button div, .stLinkButton>a div {
         background-color: transparent;
-        color: #FFFFFF;
     }
     
     /* Main Content Card */
@@ -81,13 +81,6 @@ st.markdown("""
         background-color: #F9F9F9; border-radius: 12px; padding: 20px; 
         border: 1px solid #EAEAEA; transition: box-shadow 0.2s ease-in-out;
     }
-    div[data-testid="stMetric"]:hover { box-shadow: 0 8px 15px rgba(0,0,0,0.06); }
-    div[data-testid="stMetric"] > label { font-size: 1rem; color: #555555; font-weight: 500; }
-    div[data-testid="stMetric"] > div { font-size: 2rem; font-weight: 700; }
-    .stImage img { border-radius: 12px; border: 1px solid #EAEAEA; }
-    hr { background-color: #EAEAEA; }
-
-    /* Potential Label & Score Bar Styling */
     .potential-label {
         padding: 6px 14px; border-radius: 10px; font-weight: 700;
         font-size: 1.1rem; display: inline-block; text-align: center;
@@ -150,23 +143,27 @@ def generate_indiamart_link(item_name):
 
 # --- Main App Execution ---
 def main():
-    with st.container():
-        st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
-        st.image("prism_logo_new.png")
-        st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
+    st.image("prism_logo.png", width=250)
+    st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
-   # --- NEW: Category Selection ---
-    categories = {
-        "Car & Motorbike": "products_car_&_motorbike.csv",
-        "Electronics": "products_electronics.csv",
-        "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
-        "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
-    }
-    
-    selected_category_name = st.selectbox(
-        "Select a Product Category",
-        options=list(categories.keys())
-    )
+    # --- NEW: Category Selection in the Sidebar ---
+    with st.sidebar:
+        st.subheader("Select a Category")
+        
+        # Define the categories and their corresponding file names
+        categories = {
+            "Car & Motorbike": "products_car_&_motorbike.csv",
+            "Electronics": "products_electronics.csv",
+            "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
+            "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
+        }
+        
+        selected_category_name = st.radio(
+            "Categories",
+            options=list(categories.keys()),
+            label_visibility="collapsed"
+        )
     
     file_name = categories[selected_category_name]
     df = load_and_process_data(file_name)
@@ -194,10 +191,10 @@ def main():
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
         nav_col1, nav_col2 = st.columns(2)
-        if nav_col1.button("← Previous", use_container_width=True):
+        if nav_col1.button("← Previous Product", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Next →", use_container_width=True):
+        if nav_col2.button("Discover Next Product →", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
@@ -255,4 +252,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
