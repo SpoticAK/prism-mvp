@@ -144,7 +144,7 @@ def main():
     st.image("prism_logo_new.png")
     st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
-    # --- Category Selection in Sidebar ---
+    # --- NEW: Sidebar for Category Selection ---
     with st.sidebar:
         st.subheader("Select a Category")
         
@@ -162,15 +162,16 @@ def main():
             is_active = (st.session_state.selected_category == category)
             if st.button(category, use_container_width=True, key=category, type="primary" if is_active else "secondary"):
                 st.session_state.selected_category = category
-                st.session_state.product_pointer = 0 # Reset pointer on category change
+                st.session_state.product_pointer = 0
                 st.rerun()
 
+    # --- Main Dashboard ---
     selected_category_name = st.session_state.selected_category
     file_name = categories[selected_category_name]
     df = load_and_process_data(file_name)
     
     if df is None:
-        st.error(f"File not found: '{file_name}'. Please ensure it's in your GitHub repository.")
+        st.error(f"File not found: '{file_name}'. Please ensure it is in your GitHub repository.")
         st.stop()
 
     if 'current_category' not in st.session_state or st.session_state.current_category != selected_category_name:
