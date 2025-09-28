@@ -155,18 +155,35 @@ def main():
         st.image("prism_logo_new.png")
         st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
-    df = load_and_process_data('products.csv')
+   # --- NEW: Category Selection ---
+    categories = {
+        "Car & Motorbike": "products_car_&_motorbike.csv",
+        "Electronics": "products_electronics.csv",
+        "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
+        "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
+    }
+    
+    selected_category_name = st.selectbox(
+        "Select a Product Category",
+        options=list(categories.keys())
+    )
+    
+    file_name = categories[selected_category_name]
+    df = load_and_process_data(file_name)
+    
     if df is None:
-        st.error("File not found: 'products.csv'. Please ensure it is in your GitHub repository.")
+        st.error(f"File not found: '{file_name}'. Please ensure it is in your GitHub repository.")
         st.stop()
 
-    if 'shuffled_indices' not in st.session_state:
+    # --- Session State Management (resets when category changes) ---
+    if 'current_category' not in st.session_state or st.session_state.current_category != selected_category_name:
+        st.session_state.current_category = selected_category_name
         indices = list(df.index)
         random.shuffle(indices)
         st.session_state.shuffled_indices = indices
         st.session_state.product_pointer = 0
 
-    st.caption(f"Loaded {len(df)} products for discovery.")
+    st.caption(f"Loaded {len(df)} products for {selected_category_name}.")
     st.divider()
     
     current_shuffled_index = st.session_state.product_pointer
@@ -177,10 +194,10 @@ def main():
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
         nav_col1, nav_col2 = st.columns(2)
-        if nav_col1.button("← Previous", use_container_width=True):
+        if nav_col1.button("← Previous Product", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Next →", use_container_width=True):
+        if nav_col2.button("Discover Next Product →", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
@@ -192,15 +209,15 @@ def main():
             st.markdown("---")
             
             metric_col1, metric_col2 = st.columns(2)
-            metric_col1.metric(label="Price", value=f"₹{current_product.get('Price', 0):,.0f}")
-            metric_col2.metric(label="Monthly Sales", value=clean_sales_text(current_product.get('Monthly Sales', 'N/A')))
+            metric_col1.metric(label="💰 Price", value=f"₹{current_product.get('Price', 0):,.0f}")
+            metric_col2.metric(label="📈 Monthly Sales", value=clean_sales_text(current_product.get('Monthly Sales', 'N/A')))
             
             st.markdown("### ⭐ Rating")
             st.markdown(f"<h2 style='color: #212121; font-weight: 600;'>{get_rating_stars(current_product.get('Ratings', 'N/A'))}</h2>", unsafe_allow_html=True)
             st.markdown(f"Based on **{int(current_product.get('Review', 0)):,}** reviews.")
             st.divider()
 
-            st.subheader("PRISM Analysis")
+            st.subheader("📊 PRISM Analysis")
             potential = current_product.get('Potential', 'Low Potential')
             potential_class = potential.lower().replace(" ", "-")
             prism_score = int(current_product.get('PRISM Score', 0))
@@ -238,3 +255,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
