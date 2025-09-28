@@ -94,6 +94,27 @@ st.markdown("""
     .score-bar-foreground { background-color: #E65C5F; height: 10px; border-radius: 0.5rem; } /* Red score bar */
     .score-text { font-size: 1rem; font-weight: 600; color: #555555; }
     .analysis-details { line-height: 1.8; }
+
+    /* --- NEW: Sidebar Category Button Styling --- */
+    [data-testid="stSidebar"] .stButton>button {
+        background-color: transparent;
+        color: #333 !important;
+        border: 1px solid transparent;
+        padding: 10px 15px;
+        width: 100%;
+        text-align: left;
+        margin-bottom: 5px;
+        font-weight: 600;
+    }
+    [data-testid="stSidebar"] .stButton>button:hover {
+        background-color: #f0f0f5;
+        border: 1px solid #d0d0d5;
+    }
+    [data-testid="stSidebar"] .stButton>button.active-category {
+        background-color: #E65C5F;
+        color: #FFFFFF !important;
+        border: 1px solid #D92B2F;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -144,14 +165,14 @@ def generate_indiamart_link(item_name):
 # --- Main App Execution ---
 def main():
     st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
-    st.image("prism_logo_new.png", width=250)
+    st.image("prism_logo.png", width=250)
     st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
-    # --- NEW: Category Selection in the Sidebar ---
+    # --- Sidebar for Category Selection ---
     with st.sidebar:
         st.subheader("Select a Category")
         
-        # Define the categories and their corresponding file names
+        # Define categories and their corresponding file names
         categories = {
             "Car & Motorbike": "products_car_&_motorbike.csv",
             "Electronics": "products_electronics.csv",
@@ -159,12 +180,20 @@ def main():
             "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
         }
         
-        selected_category_name = st.radio(
-            "Categories",
-            options=list(categories.keys()),
-            label_visibility="collapsed"
-        )
-    
+        # Initialize selected_category in session state if it doesn't exist
+        if 'selected_category' not in st.session_state:
+            st.session_state.selected_category = "Sports, Fitness & Outdoors"
+
+        # Display category buttons
+        for category in categories.keys():
+            # Use markdown to check which button is active for styling
+            button_type = "primary" if st.session_state.selected_category == category else "secondary"
+            if st.button(category, use_container_width=True, type=button_type):
+                st.session_state.selected_category = category
+                st.rerun()
+
+    # Load data based on the selected category
+    selected_category_name = st.session_state.selected_category
     file_name = categories[selected_category_name]
     df = load_and_process_data(file_name)
     
@@ -172,7 +201,7 @@ def main():
         st.error(f"File not found: '{file_name}'. Please ensure it is in your GitHub repository.")
         st.stop()
 
-    # --- Session State Management (resets when category changes) ---
+    # Reset product pointer if the category changes
     if 'current_category' not in st.session_state or st.session_state.current_category != selected_category_name:
         st.session_state.current_category = selected_category_name
         indices = list(df.index)
