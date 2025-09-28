@@ -144,45 +144,60 @@ def main():
     st.image("prism_logo_new.png")
     st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
-    # --- NEW: Sidebar for Category Selection ---
-    with st.sidebar:
-        st.subheader("Select a Category")
-        
-        categories = {
-            "Car & Motorbike": "products_car_&_motorbike.csv",
-            "Electronics": "products_electronics.csv",
-            "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
-            "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
-        }
-        
-        if 'selected_category' not in st.session_state:
-            st.session_state.selected_category = "Sports, Fitness & Outdoors"
+      # --- Session State Initialization ---
+    if 'sidebar_state' not in st.session_state:
+        st.session_state.sidebar_state = 'expanded'
+    if 'selected_category' not in st.session_state:
+        st.session_state.selected_category = "Sports, Fitness & Outdoors"
 
-        for category in categories.keys():
-            is_active = (st.session_state.selected_category == category)
-            if st.button(category, use_container_width=True, key=category, type="primary" if is_active else "secondary"):
-                st.session_state.selected_category = category
-                st.session_state.product_pointer = 0
+    # --- NEW: Main Layout with Custom Navigation Pane ---
+    nav_pane_width = 3 if st.session_state.sidebar_state == 'expanded' else 1
+    main_content_width = 7
+    
+    nav_pane, main_content = st.columns([nav_pane_width, main_content_width], gap="large")
+
+    with nav_pane:
+        if st.session_state.sidebar_state == 'expanded':
+            if st.button("◀ Collapse", use_container_width=True):
+                st.session_state.sidebar_state = 'collapsed'
+                st.rerun()
+            
+            st.subheader("Categories")
+            categories = {
+                "Car & Motorbike": "products_car_&_motorbike.csv",
+                "Electronics": "products_electronics.csv",
+                "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
+                "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
+            }
+            for category in categories.keys():
+                is_active = (st.session_state.selected_category == category)
+                if st.button(category, use_container_width=True, key=category, type="primary" if is_active else "secondary"):
+                    st.session_state.selected_category = category
+                    st.session_state.product_pointer = 0
+                    st.rerun()
+        else:
+            if st.button("▶", use_container_width=True):
+                st.session_state.sidebar_state = 'expanded'
                 st.rerun()
 
-    # --- Main Dashboard ---
-    selected_category_name = st.session_state.selected_category
-    file_name = categories[selected_category_name]
-    df = load_and_process_data(file_name)
-    
-    if df is None:
-        st.error(f"File not found: '{file_name}'. Please ensure it is in your GitHub repository.")
-        st.stop()
+    with main_content:
+        selected_category_name = st.session_state.selected_category
+        file_name = f"products_{selected_category_name.replace(', ', '_').replace(' & ', '_').lower()}.csv"
+        df = load_and_process_data(file_name)
+        
+        if df is None:
+            st.error(f"File not found: '{file_name}'. Please ensure it is in your GitHub repository.")
+            st.stop()
 
-    if 'current_category' not in st.session_state or st.session_state.current_category != selected_category_name:
-        st.session_state.current_category = selected_category_name
-        indices = list(df.index)
-        random.shuffle(indices)
-        st.session_state.shuffled_indices = indices
-        st.session_state.product_pointer = 0
+        if 'current_category' not in st.session_state or st.session_state.current_category != selected_category_name:
+            st.session_state.current_category = selected_category_name
+            indices = list(df.index)
+            random.shuffle(indices)
+            st.session_state.shuffled_indices = indices
+            st.session_state.product_pointer = 0
 
-    st.caption(f"Loaded {len(df)} products for {selected_category_name}.")
-    st.divider()
+        st.caption(f"Loaded {len(df)} products for {selected_category_name}.")
+        st.divider()
     
     current_shuffled_index = st.session_state.product_pointer
     current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
