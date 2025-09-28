@@ -165,7 +165,7 @@ def generate_indiamart_link(item_name):
 # --- Main App Execution ---
 def main():
     st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
-    st.image("prism_logo.png", width=250)
+    st.image("prism_logo_new.png", width=250)
     st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
     # --- Sidebar for Category Selection ---
