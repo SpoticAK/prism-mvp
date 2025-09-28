@@ -194,10 +194,10 @@ def main():
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
         nav_col1, nav_col2 = st.columns(2)
-        if nav_col1.button("← Previous Product", use_container_width=True):
+        if nav_col1.button("← Previous", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Discover Next Product →", use_container_width=True):
+        if nav_col2.button("Next →", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
