@@ -40,7 +40,7 @@ st.markdown("""
         margin-bottom: 2rem; 
     }
     .logo-container img { 
-        max-width: 250px; 
+        max-width: 400px; 
         margin-bottom: 0.5rem; 
     }
     .logo-container p { 
@@ -55,52 +55,84 @@ st.markdown("""
     
     /* Main Action Buttons (Red) */
     .stButton>button, .stLinkButton>a {
-        border-radius: 8px; border: none; background-color: #E65C5F;
-        color: #FFFFFF !important; padding: 12px 28px; font-weight: 600;
+        border-radius: 8px; border: none; background-color: #E65C5F; /* Fainter Red */
+        color: #FFFFFF !important; /* White Text */
+        padding: 12px 28px; font-weight: 600;
         font-size: 1.1rem; 
+        font-family: 'Inter', sans-serif;
         text-decoration: none; transition: all 0.2s ease-in-out;
     }
     .stButton>button:hover, .stLinkButton>a:hover { 
-        background-color: #D92B2F;
+        background-color: #D92B2F; /* Darker Red on Hover */
+        color: #FFFFFF !important;
     }
     .stButton>button div, .stLinkButton>a div {
         background-color: transparent;
         color: #FFFFFF;
     }
     
-    /* --- NEW: Sidebar / Nav Pane Styling --- */
-    [data-testid="stSidebar"] {
-        padding-top: 2rem;
+    /* --- Modern Category Select Bar --- */
+    .category-bar {
         background-color: #FFFFFF;
+        padding: 1.2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+        margin-bottom: 2rem;
+        text-align: center;
     }
-    [data-testid="stSidebar"] .stButton>button {
-        background-color: transparent;
-        color: #333 !important;
-        border: 1px solid transparent;
-        padding: 10px 15px;
-        width: 100%;
-        text-align: left;
+    .category-header {
         font-weight: 600;
-        margin-bottom: 5px;
+        font-size: 1.1rem;
+        color: #856404; /* Faint Yellow */
+        margin-bottom: 1.2rem;
     }
-    [data-testid="stSidebar"] .stButton>button:hover {
-        background-color: #f0f0f5;
-        border: 1px solid #d0d0d5;
+    /* Individual category button styling */
+    .category-button-container .stButton>button {
+        background-color: #fff3cd; /* Faint Yellow Background */
+        color: #856404 !important; /* Dark Yellow Text */
+        font-weight: 600;
+        padding: 8px 18px; /* Reduced Padding */
+        border: 1px solid #ffeeba;
     }
-    [data-testid="stSidebar"] .stButton>button.active {
-        background-color: #E65C5F;
-        color: #FFFFFF !important;
-        border: 1px solid #D92B2F;
+    .category-button-container .stButton>button:hover {
+        background-color: rgba(230, 92, 95, 0.1); /* Faint Red Glow */
+        color: #E65C5F !important;
+        border-color: rgba(230, 92, 95, 0.3);
     }
-    [data-testid="stSidebar"] .stButton>button.active div {
-        color: #FFFFFF !important;
+    /* Style for the "More" dropdown */
+    .category-bar [data-testid="stSelectbox"] {
+        background-color: #fff3cd;
+        border-radius: 8px;
     }
-
-    /* (Other styles are unchanged) */
+    
+    /* Main Content Card */
+    .content-card {
+        background-color: #FFFFFF; border-radius: 12px; padding: 25px;
+        border: 1px solid #EAEAEA; box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+        margin-bottom: 20px;
+    }
+    
+    div[data-testid="stMetric"] {
+        background-color: #F9F9F9; border-radius: 12px; padding: 20px; 
+        border: 1px solid #EAEAEA; transition: box-shadow 0.2s ease-in-out;
+    }
+    .potential-label {
+        padding: 6px 14px; border-radius: 10px; font-weight: 700;
+        font-size: 1.1rem; display: inline-block; text-align: center;
+    }
+    .high-potential { background-color: #d4edda; color: #155724; }
+    .moderate-potential { background-color: #fff3cd; color: #856404; }
+    .low-potential { background-color: #f8d7da; color: #721c24; }
+    .missing-data-flag { font-size: 0.8rem; color: #6c757d; padding-top: 5px; }
+    .score-bar-container { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+    .score-bar-background { background-color: #e9ecef; border-radius: 0.5rem; height: 10px; flex-grow: 1; }
+    .score-bar-foreground { background-color: #E65C5F; height: 10px; border-radius: 0.5rem; } /* Red score bar */
+    .score-text { font-size: 1rem; font-weight: 600; color: #555555; }
+    .analysis-details { line-height: 1.8; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- (Engine classes and all other helper functions are unchanged from the last correct version) ---
+# --- Data Loading and Helper Functions ---
 @st.cache_data
 def load_and_process_data(csv_path):
     try:
@@ -119,7 +151,7 @@ def load_and_process_data(csv_path):
     df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
     return df
 
-def get_rating_stars(rating_text: str):
+def get_rating_stars(rating_text):
     if not isinstance(rating_text, str): return "N/A"
     match = re.search(r'(\d\.\d)', rating_text)
     if not match: return "N/A"
@@ -130,25 +162,31 @@ def get_rating_stars(rating_text: str):
     stars = "★" * full_stars + half_star + "☆" * empty_stars
     return f"{rating_num} {stars}"
 
-def clean_sales_text(sales_text: str):
+def clean_sales_text(sales_text):
     if not isinstance(sales_text, str): return "N/A"
     return sales_text.split(" ")[0]
 
-def generate_amazon_link(title: str):
+def generate_amazon_link(title):
     base_url = "https://www.amazon.in/s?k="
     search_query = urllib.parse.quote_plus(title)
     return f"{base_url}{search_query}"
 
-def generate_indiamart_link(item_name: str):
+def generate_indiamart_link(item_name):
     base_url = "https://dir.indiamart.com/search.mp?ss="
     search_query = urllib.parse.quote_plus(item_name)
     return f"{base_url}{search_query}"
 
 # --- Main App Execution ---
 def main():
-    # --- Sidebar for Category Selection ---
-    with st.sidebar:
-        st.subheader("Select a Category")
+    with st.container():
+        st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
+        st.image("prism_logo_new.png")
+        st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
+    
+    # --- Modern Category Select Bar ---
+    with st.container():
+        st.markdown("<div class='category-bar'>", unsafe_allow_html=True)
+        st.markdown("<p class='category-header'>Select a Category</p>", unsafe_allow_html=True)
         
         categories = {
             "Car & Motorbike": "products_car_&_motorbike.csv",
@@ -160,23 +198,30 @@ def main():
         if 'selected_category' not in st.session_state:
             st.session_state.selected_category = "Sports, Fitness & Outdoors"
 
-        for category in categories.keys():
+        visible_categories = list(categories.keys())[:3]
+        hidden_categories = list(categories.keys())[3:]
+        
+        cols = st.columns(len(visible_categories) + (1 if hidden_categories else 0))
+        
+        for i, category in enumerate(visible_categories):
             is_active = (st.session_state.selected_category == category)
             # Use markdown to inject a class for the active button
             if is_active:
-                st.markdown(f'<style>div[data-testid="stButton-root"] > button[kind="secondary"]:nth-child(1) {{ background-color: #E65C5F; color: #FFFFFF !important; border: 1px solid #D92B2F; }}</style>', unsafe_allow_html=True)
-                st.markdown(f'<style>div[data-testid="stButton-root"] > button[kind="secondary"]:nth-child(1) div {{ color: #FFFFFF !important; }}</style>', unsafe_allow_html=True)
-
-            if st.button(category, use_container_width=True, key=category):
+                st.markdown(f'<style>div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-child({i+1}) button {{ background-color: #E65C5F; color: #FFFFFF !important; border-color: #D92B2F; }}</style>', unsafe_allow_html=True)
+            
+            if cols[i].button(category, use_container_width=True, key=category):
                 st.session_state.selected_category = category
-                # Reset pointer when category changes
                 st.session_state.product_pointer = 0
                 st.rerun()
 
-    # --- Main Dashboard ---
-    st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
-    st.image("prism_logo_new.png")
-    st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
+        if hidden_categories:
+            with cols[-1]:
+                more_selection = st.selectbox("More", [""] + hidden_categories, index=0, label_visibility="collapsed")
+                if more_selection:
+                    st.session_state.selected_category = more_selection
+                    st.session_state.product_pointer = 0
+                    st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
     
     selected_category_name = st.session_state.selected_category
     file_name = categories[selected_category_name]
@@ -265,4 +310,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
