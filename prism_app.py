@@ -182,7 +182,7 @@ def main():
         selected_category_name = st.session_state.selected_category
         file_name = f"products_{selected_category_name.replace(', ', '_').replace(' & ', '_').lower()}.csv"
         df = load_and_process_data(file_name)
-        
+         
         if df is None:
             st.error(f"File not found: '{file_name}'. Please ensure it is in your GitHub repository.")
             st.stop()
