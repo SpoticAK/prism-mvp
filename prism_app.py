@@ -186,7 +186,7 @@ def main():
     # --- Modern Category Select Bar ---
     with st.container():
         st.markdown("<div class='category-bar'>", unsafe_allow_html=True)
-        st.markdown("<p class='category-header'>Select a Category</p>", unsafe_allow_html=True)
+        st.markdown("<p class='category-header'>Select Category</p>", unsafe_allow_html=True)
         
         categories = {
             "Car & Motorbike": "products_car_&_motorbike.csv",
@@ -198,29 +198,19 @@ def main():
         if 'selected_category' not in st.session_state:
             st.session_state.selected_category = "Sports, Fitness & Outdoors"
 
-        visible_categories = list(categories.keys())[:3]
-        hidden_categories = list(categories.keys())[3:]
+        selected_category_name = st.radio(
+            "Category Nav", 
+            options=list(categories.keys()), 
+            index=list(categories.keys()).index(st.session_state.selected_category),
+            horizontal=True, 
+            label_visibility="collapsed"
+        )
         
-        cols = st.columns(len(visible_categories) + (1 if hidden_categories else 0))
-        
-        for i, category in enumerate(visible_categories):
-            is_active = (st.session_state.selected_category == category)
-            # Use markdown to inject a class for the active button
-            if is_active:
-                st.markdown(f'<style>div[data-testid="stHorizontalBlock"] div[data-testid="column"]:nth-child({i+1}) button {{ background-color: #E65C5F; color: #FFFFFF !important; border-color: #D92B2F; }}</style>', unsafe_allow_html=True)
-            
-            if cols[i].button(category, use_container_width=True, key=category):
-                st.session_state.selected_category = category
-                st.session_state.product_pointer = 0
-                st.rerun()
+        if selected_category_name != st.session_state.selected_category:
+            st.session_state.selected_category = selected_category_name
+            st.session_state.product_pointer = 0
+            st.rerun()
 
-        if hidden_categories:
-            with cols[-1]:
-                more_selection = st.selectbox("More", [""] + hidden_categories, index=0, label_visibility="collapsed")
-                if more_selection:
-                    st.session_state.selected_category = more_selection
-                    st.session_state.product_pointer = 0
-                    st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
     
     selected_category_name = st.session_state.selected_category
