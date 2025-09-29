@@ -28,10 +28,8 @@ st.markdown("""
         color: #1a1a1a;
     }
     .main .block-container { 
-        padding-top: 2rem; 
-        padding-bottom: 2rem; 
-        padding-left: 2.5rem;
-        padding-right: 2.5rem;
+        padding-top: 1.5rem; 
+        padding-bottom: 2rem;
     }
     
     /* Centered Logo and Subtitle */
@@ -39,15 +37,8 @@ st.markdown("""
         text-align: center; 
         margin-bottom: 2rem; 
     }
-    .logo-container img { 
-        max-width: 400px; 
-        margin-bottom: 0.5rem; 
-    }
-    .logo-container p { 
-        font-size: 1.1rem; 
-        color: #555; 
-        margin-top: -10px; 
-    }
+    .logo-container img { max-width: 250px; }
+    .logo-container p { font-size: 1.1rem; color: #555; margin-top: -10px; }
 
     h1, h2, h3 { color: #1c1c1e; font-weight: 700; }
     h2 { font-size: 1.6rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
@@ -55,63 +46,63 @@ st.markdown("""
     
     /* Main Action Buttons (Red) */
     .stButton>button, .stLinkButton>a {
-        border-radius: 8px; border: none; background-color: #E65C5F; /* Fainter Red */
-        color: #FFFFFF !important; /* White Text */
-        padding: 12px 28px; font-weight: 600;
+        border-radius: 8px; border: none; background-color: #E65C5F;
+        color: #FFFFFF !important; padding: 12px 28px; font-weight: 600;
         font-size: 1.1rem; 
-        font-family: 'Inter', sans-serif;
         text-decoration: none; transition: all 0.2s ease-in-out;
     }
     .stButton>button:hover, .stLinkButton>a:hover { 
-        background-color: #D92B2F; /* Darker Red on Hover */
-        color: #FFFFFF !important;
+        background-color: #D92B2F;
     }
     .stButton>button div, .stLinkButton>a div {
         background-color: transparent;
         color: #FFFFFF;
     }
-    
-    /* --- Modern Category Select Bar --- */
-    .category-bar {
+
+    /* --- Custom Navigation Pane --- */
+    .nav-pane {
         background-color: #FFFFFF;
-        padding: 1.2rem;
         border-radius: 12px;
+        padding: 1rem;
         box-shadow: 0 4px 6px rgba(0,0,0,0.04);
-        margin-bottom: 2rem;
-        text-align: center;
     }
-    .category-header {
-        font-weight: 600;
-        font-size: 1.1rem;
-        color: #856404; /* Faint Yellow */
-        margin-bottom: 1.2rem;
-    }
-    /* Individual category button styling */
-    .category-button-container .stButton>button {
-        background-color: #fff3cd; /* Faint Yellow Background */
-        color: #856404 !important; /* Dark Yellow Text */
-        font-weight: 600;
-        padding: 8px 18px; /* Reduced Padding */
+    .nav-pane .stButton>button {
+        background-color: #fff3cd; /* Faint Yellow */
+        color: #856404 !important;
         border: 1px solid #ffeeba;
+        text-align: left;
+        font-weight: 600;
+        margin-bottom: 5px;
+        padding: 10px 15px;
     }
-    .category-button-container .stButton>button:hover {
-        background-color: rgba(230, 92, 95, 0.1); /* Faint Red Glow */
+    .nav-pane .stButton>button:hover {
+        background-color: rgba(230, 92, 95, 0.1);
         color: #E65C5F !important;
-        border-color: rgba(230, 92, 95, 0.3);
     }
-    /* Style for the "More" dropdown */
-    .category-bar [data-testid="stSelectbox"] {
-        background-color: #fff3cd;
-        border-radius: 8px;
+    /* Active Category Button */
+    .nav-pane .stButton>button.active {
+        background-color: #E65C5F;
+        color: #FFFFFF !important;
+        border: 1px solid #D92B2F;
+    }
+    .nav-pane .stButton>button.active div {
+        color: #FFFFFF !important;
+    }
+    /* Collapse Button */
+    .collapse-button button {
+        background: transparent !important;
+        color: #555 !important;
+        font-size: 1.2rem;
+        padding: 5px !important;
+        border: none !important;
     }
     
-    /* Main Content Card */
+    /* (Other styles unchanged) */
     .content-card {
         background-color: #FFFFFF; border-radius: 12px; padding: 25px;
         border: 1px solid #EAEAEA; box-shadow: 0 4px 6px rgba(0,0,0,0.04);
         margin-bottom: 20px;
     }
-    
     div[data-testid="stMetric"] {
         background-color: #F9F9F9; border-radius: 12px; padding: 20px; 
         border: 1px solid #EAEAEA; transition: box-shadow 0.2s ease-in-out;
@@ -126,7 +117,7 @@ st.markdown("""
     .missing-data-flag { font-size: 0.8rem; color: #6c757d; padding-top: 5px; }
     .score-bar-container { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
     .score-bar-background { background-color: #e9ecef; border-radius: 0.5rem; height: 10px; flex-grow: 1; }
-    .score-bar-foreground { background-color: #E65C5F; height: 10px; border-radius: 0.5rem; } /* Red score bar */
+    .score-bar-foreground { background-color: #E65C5F; height: 10px; border-radius: 0.5rem; }
     .score-text { font-size: 1rem; font-weight: 600; color: #555555; }
     .analysis-details { line-height: 1.8; }
 </style>
@@ -151,7 +142,7 @@ def load_and_process_data(csv_path):
     df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
     return df
 
-def get_rating_stars(rating_text):
+def get_rating_stars(rating_text: str):
     if not isinstance(rating_text, str): return "N/A"
     match = re.search(r'(\d\.\d)', rating_text)
     if not match: return "N/A"
@@ -162,41 +153,46 @@ def get_rating_stars(rating_text):
     stars = "★" * full_stars + half_star + "☆" * empty_stars
     return f"{rating_num} {stars}"
 
-def clean_sales_text(sales_text):
+def clean_sales_text(sales_text: str):
     if not isinstance(sales_text, str): return "N/A"
     return sales_text.split(" ")[0]
 
-def generate_amazon_link(title):
+def generate_amazon_link(title: str):
     base_url = "https://www.amazon.in/s?k="
     search_query = urllib.parse.quote_plus(title)
     return f"{base_url}{search_query}"
 
-def generate_indiamart_link(item_name):
+def generate_indiamart_link(item_name: str):
     base_url = "https://dir.indiamart.com/search.mp?ss="
     search_query = urllib.parse.quote_plus(item_name)
     return f"{base_url}{search_query}"
 
 # --- Main App Execution ---
 def main():
-    with st.container():
-        st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
-        st.image("prism_logo_new.png")
-        st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
+    st.image("prism_logo_new.png")
+    st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
+    # --- Session State Initialization ---
+    if 'sidebar_state' not in st.session_state:
+        st.session_state.sidebar_state = 'expanded'
+    if 'selected_category' not in st.session_state:
+        st.session_state.selected_category = "Sports, Fitness & Outdoors"
 
-    # --- NEW: Main Layout with Custom Navigation Pane ---
-    nav_width = 2 if st.session_state.sidebar_state == 'expanded' else 1
-    main_width = 8
-    nav_pane, main_content = st.columns([nav_width, main_width], gap="large")
+    # --- Layout with Custom Navigation Pane ---
+    if st.session_state.sidebar_state == 'expanded':
+        nav_pane, main_content = st.columns([2, 5], gap="large")
+    else:
+        nav_pane, main_content = st.columns([1, 10], gap="small")
 
     with nav_pane:
         st.markdown("<div class='nav-pane'>", unsafe_allow_html=True)
         if st.session_state.sidebar_state == 'expanded':
+            st.subheader("Categories")
             if st.button("◀ Collapse", use_container_width=True, key="collapse"):
                 st.session_state.sidebar_state = 'collapsed'
                 st.rerun()
             
-            st.subheader("Categories")
             categories = {
                 "Car & Motorbike": "products_car_&_motorbike.csv",
                 "Electronics": "products_electronics.csv",
@@ -205,20 +201,11 @@ def main():
             }
             for category in categories.keys():
                 is_active = (st.session_state.selected_category == category)
-                button_html = f"""
-                <style>
-                    div[data-testid="stHorizontalBlock"] .stButton button[kind="secondary"]:nth-child(1) {{
-                        background-color: {'#E65C5F' if is_active else '#F0F2F5'};
-                        color: {'#FFFFFF' if is_active else '#555'} !important;
-                    }}
-                </style>
-                """
-                st.markdown(button_html, unsafe_allow_html=True)
-                if st.button(category, use_container_width=True, key=category):
+                if st.button(category, use_container_width=True, key=category, type="primary" if is_active else "secondary"):
                     st.session_state.selected_category = category
                     st.session_state.product_pointer = 0
                     st.rerun()
-        else: # Collapsed state
+        else:
             if st.button("▶", use_container_width=True, key="expand"):
                 st.session_state.sidebar_state = 'expanded'
                 st.rerun()
@@ -247,68 +234,68 @@ def main():
         current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
         current_product = df.iloc[current_product_index]
 
-    col1, col2 = st.columns([2, 3], gap="large")
-    with col1:
-        st.image(current_product.get('Image', ''), use_container_width=True)
-        nav_col1, nav_col2 = st.columns(2)
-        if nav_col1.button("← Previous", use_container_width=True):
-            st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
-            st.rerun()
-        if nav_col2.button("Next →", use_container_width=True):
-            st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
-            st.rerun()
+        col1, col2 = st.columns([2, 3], gap="large")
+        with col1:
+            st.image(current_product.get('Image', ''), use_container_width=True)
+            nav_col1, nav_col2 = st.columns(2)
+            if nav_col1.button("← Previous", use_container_width=True):
+                st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
+                st.rerun()
+            if nav_col2.button("Next →", use_container_width=True):
+                st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
+                st.rerun()
 
-    with col2:
-        with st.container():
-            st.markdown(f"<div class='content-card'>", unsafe_allow_html=True)
-            st.markdown(f"### {current_product.get('Title', 'No Title Available')}")
-            st.link_button("View on Amazon ↗", url=generate_amazon_link(current_product.get('Title', '')), use_container_width=True)
-            st.markdown("---")
-            
-            metric_col1, metric_col2 = st.columns(2)
-            metric_col1.metric(label="💰 Price", value=f"₹{current_product.get('Price', 0):,.0f}")
-            metric_col2.metric(label="📈 Monthly Sales", value=clean_sales_text(current_product.get('Monthly Sales', 'N/A')))
-            
-            st.markdown("### ⭐ Rating")
-            st.markdown(f"<h2 style='color: #212121; font-weight: 600;'>{get_rating_stars(current_product.get('Ratings', 'N/A'))}</h2>", unsafe_allow_html=True)
-            st.markdown(f"Based on **{int(current_product.get('Review', 0)):,}** reviews.")
-            st.divider()
+        with col2:
+            with st.container():
+                st.markdown(f"<div class='content-card'>", unsafe_allow_html=True)
+                st.markdown(f"### {current_product.get('Title', 'No Title Available')}")
+                st.link_button("View on Amazon ↗", url=generate_amazon_link(current_product.get('Title', '')), use_container_width=True)
+                st.markdown("---")
+                
+                metric_col1, metric_col2 = st.columns(2)
+                metric_col1.metric(label="💰 Price", value=f"₹{current_product.get('Price', 0):,.0f}")
+                metric_col2.metric(label="📈 Monthly Sales", value=clean_sales_text(current_product.get('Monthly Sales', 'N/A')))
+                
+                st.markdown("### ⭐ Rating")
+                st.markdown(f"<h2 style='color: #212121; font-weight: 600;'>{get_rating_stars(current_product.get('Ratings', 'N/A'))}</h2>", unsafe_allow_html=True)
+                st.markdown(f"Based on **{int(current_product.get('Review', 0)):,}** reviews.")
+                st.divider()
 
-            st.subheader("📊 PRISM Analysis")
-            potential = current_product.get('Potential', 'Low Potential')
-            potential_class = potential.lower().replace(" ", "-")
-            prism_score = int(current_product.get('PRISM Score', 0))
-            identified_item = current_product.get('Identified Item', 'N/A')
+                st.subheader("📊 PRISM Analysis")
+                potential = current_product.get('Potential', 'Low Potential')
+                potential_class = potential.lower().replace(" ", "-")
+                prism_score = int(current_product.get('PRISM Score', 0))
+                identified_item = current_product.get('Identified Item', 'N/A')
 
-            st.markdown("**PRISM Score**")
-            st.markdown(f"""
-                <div class="score-bar-container">
-                    <div class="score-bar-background">
-                        <div class="score-bar-foreground" style="width: {prism_score}%;"></div>
+                st.markdown("**PRISM Score**")
+                st.markdown(f"""
+                    <div class="score-bar-container">
+                        <div class="score-bar-background">
+                            <div class="score-bar-foreground" style="width: {prism_score}%;"></div>
+                        </div>
+                        <div class="score-text">{prism_score}/100</div>
                     </div>
-                    <div class="score-text">{prism_score}/100</div>
+                """, unsafe_allow_html=True)
+                
+                st.markdown(f"<div class='potential-label {potential_class}'>{potential}</div>", unsafe_allow_html=True)
+                st.markdown("---")
+                
+                st.markdown(f"""
+                <div class='analysis-details'>
+                    <b>Identified Item:</b> {identified_item}<br>
+                    <b>Listing Quality:</b> {current_product.get('Listing Quality', 'N/A')}
                 </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown(f"<div class='potential-label {potential_class}'>{potential}</div>", unsafe_allow_html=True)
-            st.markdown("---")
-            
-            st.markdown(f"""
-            <div class='analysis-details'>
-                <b>Identified Item:</b> {identified_item}<br>
-                <b>Listing Quality:</b> {current_product.get('Listing Quality', 'N/A')}
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
-            if current_product.get('Missing Data', False):
-                st.markdown("<div class='missing-data-flag'>*Score calculated with some data unavailable.</div>", unsafe_allow_html=True)
-            
-            st.divider()
-            
-            st.subheader("🔗 Supplier Gateway")
-            indiamart_url = generate_indiamart_link(identified_item)
-            st.link_button("Search for Suppliers on Indiamart ↗", url=indiamart_url, use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                if current_product.get('Missing Data', False):
+                    st.markdown("<div class='missing-data-flag'>*Score calculated with some data unavailable.</div>", unsafe_allow_html=True)
+                
+                st.divider()
+                
+                st.subheader("🔗 Supplier Gateway")
+                indiamart_url = generate_indiamart_link(identified_item)
+                st.link_button("Search for Suppliers on Indiamart ↗", url=indiamart_url, use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
