@@ -5,6 +5,9 @@ import re
 import math
 import urllib.parse
 import random
+import requests
+import cv2
+import numpy as np
 import os
 
 # --- Import Engines ---
@@ -144,60 +147,35 @@ def main():
     st.image("prism_logo_new.png")
     st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
-      # --- Session State Initialization ---
-    if 'sidebar_state' not in st.session_state:
-        st.session_state.sidebar_state = 'expanded'
-    if 'selected_category' not in st.session_state:
-        st.session_state.selected_category = "Sports, Fitness & Outdoors"
-
-    # --- NEW: Main Layout with Custom Navigation Pane ---
-    nav_pane_width = 3 if st.session_state.sidebar_state == 'expanded' else 1
-    main_content_width = 7
+    # --- CORRECTED: Category Selection with exact filenames ---
+    categories = {
+        "Car & Motorbike": "Products_Car & Motorbike.csv",
+        "Electronics": "Products_Electronics.csv",
+        "Sports, Fitness & Outdoors": "Products_Sports, Fitness & Outdoors.csv",
+        "Tools & Home Improvement": "Products_Tools & Home Improvement.csv"
+    }
     
-    nav_pane, main_content = st.columns([nav_pane_width, main_content_width], gap="large")
+    selected_category_name = st.selectbox(
+        "Select a Product Category",
+        options=list(categories.keys())
+    )
+    
+    file_name = categories[selected_category_name]
+    df = load_and_process_data(file_name)
+    
+    if df is None:
+        st.error(f"File not found: '{file_name}'. Please ensure your files are named exactly as specified and are in your GitHub repository.")
+        st.stop()
 
-    with nav_pane:
-        if st.session_state.sidebar_state == 'expanded':
-            if st.button("◀ Collapse", use_container_width=True):
-                st.session_state.sidebar_state = 'collapsed'
-                st.rerun()
-            
-            st.subheader("Categories")
-            categories = {
-                "Car & Motorbike": "products_car_&_motorbike.csv",
-                "Electronics": "products_electronics.csv",
-                "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
-                "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
-            }
-            for category in categories.keys():
-                is_active = (st.session_state.selected_category == category)
-                if st.button(category, use_container_width=True, key=category, type="primary" if is_active else "secondary"):
-                    st.session_state.selected_category = category
-                    st.session_state.product_pointer = 0
-                    st.rerun()
-        else:
-            if st.button("▶", use_container_width=True):
-                st.session_state.sidebar_state = 'expanded'
-                st.rerun()
+    if 'current_category' not in st.session_state or st.session_state.current_category != selected_category_name:
+        st.session_state.current_category = selected_category_name
+        indices = list(df.index)
+        random.shuffle(indices)
+        st.session_state.shuffled_indices = indices
+        st.session_state.product_pointer = 0
 
-    with main_content:
-        selected_category_name = st.session_state.selected_category
-        file_name = f"products_{selected_category_name.replace(', ', '_').replace(' & ', '_').lower()}.csv"
-        df = load_and_process_data(file_name)
-        
-        if df is None:
-            st.error(f"File not found: '{file_name}'. Please ensure it is in your GitHub repository.")
-            st.stop()
-
-        if 'current_category' not in st.session_state or st.session_state.current_category != selected_category_name:
-            st.session_state.current_category = selected_category_name
-            indices = list(df.index)
-            random.shuffle(indices)
-            st.session_state.shuffled_indices = indices
-            st.session_state.product_pointer = 0
-
-        st.caption(f"Loaded {len(df)} products for {selected_category_name}.")
-        st.divider()
+    st.caption(f"Loaded {len(df)} products for {selected_category_name}.")
+    st.divider()
     
     current_shuffled_index = st.session_state.product_pointer
     current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
@@ -207,10 +185,10 @@ def main():
     with col1:
         st.image(current_product.get('Image', ''), use_container_width=True)
         nav_col1, nav_col2 = st.columns(2)
-        if nav_col1.button("← Previous", use_container_width=True):
+        if nav_col1.button("← Previous Product", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Next →", use_container_width=True):
+        if nav_col2.button("Discover Next Product →", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
