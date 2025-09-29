@@ -8,7 +8,6 @@ import random
 import requests
 import cv2
 import numpy as np
-import os
 
 # --- Import Engines ---
 from item_identifier import ItemIdentifier
@@ -21,7 +20,7 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    /* Base Styles */
+    /* Base Styles & Typography */
     html, body, [class*="st-"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         background-color: #F0F2F6; 
@@ -147,12 +146,12 @@ def main():
     st.image("prism_logo_new.png")
     st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
-    # --- CORRECTED: Category Selection with exact filenames ---
+    # --- Category Selection ---
     categories = {
-        "Car & Motorbike": "Products_Car & Motorbike.csv",
-        "Electronics": "Products_Electronics.csv",
-        "Sports, Fitness & Outdoors": "Products_Sports, Fitness & Outdoors.csv",
-        "Tools & Home Improvement": "Products_Tools & Home Improvement.csv"
+        "Car & Motorbike": "products_car_&_motorbike.csv",
+        "Electronics": "products_electronics.csv",
+        "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
+        "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
     }
     
     selected_category_name = st.selectbox(
@@ -167,6 +166,7 @@ def main():
         st.error(f"File not found: '{file_name}'. Please ensure your files are named exactly as specified and are in your GitHub repository.")
         st.stop()
 
+    # --- Session State Management ---
     if 'current_category' not in st.session_state or st.session_state.current_category != selected_category_name:
         st.session_state.current_category = selected_category_name
         indices = list(df.index)
@@ -188,7 +188,7 @@ def main():
         if nav_col1.button("← Previous Product", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Discover Next Product →", use_container_width=True):
+        if nav_col2.button("Next Product →", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
