@@ -151,19 +151,24 @@ def main():
     st.image("prism_logo_new.png")
     st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
-    # --- Category Selection ---
-    categories = {
-        "Car & Motorbike": "products_car_&_motorbike.csv",
-        "Electronics": "products_electronics.csv",
-        "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
-        "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
-    }
-    
-    selected_category_name = st.selectbox(
-        "Product Category",
-        options=list(categories.keys())
-    )
-    
+   # --- NEW: Modern Category Select Bar ---
+    with st.container():
+        st.markdown("<div class='category-bar'>", unsafe_allow_html=True)
+        
+        categories = {
+            "Car & Motorbike": "products_car_&_motorbike.csv",
+            "Electronics": "products_electronics.csv",
+            "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
+            "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
+        }
+        
+        if 'selected_category' not in st.session_state:
+            st.session_state.selected_category = "Sports, Fitness & Outdoors"
+
+        # Display first 3 categories as buttons, the rest in a dropdown
+        visible_categories = list(categories.keys())[:3]
+        hidden_categories = list(categories.keys())[3:]
+        
     file_name = categories[selected_category_name]
     df = load_and_process_data(file_name)
     
