@@ -102,7 +102,12 @@ def load_and_process_data(csv_path):
     try:
         df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
     except FileNotFoundError: return None
-    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+
+    # --- CRITICAL FIX: Remove commas from 'Price' before converting to number ---
+    if 'Price' in df.columns:
+        df['Price'] = pd.to_numeric(df['Price'].astype(str).str.replace(',', ''), errors='coerce')
+    
+    # --- The rest of the cleaning and processing logic is unchanged ---
     df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
     df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
     df['Cleaned Sales'] = df['Monthly Sales'].str.lower().str.replace('k', '000').str.extract(r'(\d+)').astype(float).fillna(0).astype(int)
