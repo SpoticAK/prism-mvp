@@ -53,62 +53,54 @@ st.markdown("""
     h2 { font-size: 1.6rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
     h3 { font-size: 1.25rem; font-weight: 600; }
     
-    /* Main Action Buttons */
+    /* Main Action Buttons (Red) */
     .stButton>button, .stLinkButton>a {
-        border-radius: 8px; border: none; background-color: #E65C5F; /* Fainter Red */
-        color: #FFFFFF !important; /* White Text */
-        padding: 12px 28px; font-weight: 600;
+        border-radius: 8px; border: none; background-color: #E65C5F;
+        color: #FFFFFF !important; padding: 12px 28px; font-weight: 600;
         font-size: 1.1rem; 
-        font-family: 'Inter', sans-serif;
         text-decoration: none; transition: all 0.2s ease-in-out;
     }
     .stButton>button:hover, .stLinkButton>a:hover { 
-        background-color: #D92B2F; /* Darker Red on Hover */
-        color: #FFFFFF !important;
+        background-color: #D92B2F;
     }
     .stButton>button div, .stLinkButton>a div {
         background-color: transparent;
+        color: #FFFFFF;
     }
     
-    /* Main Content Card */
-    .content-card {
-        background-color: #FFFFFF; border-radius: 12px; padding: 25px;
-        border: 1px solid #EAEAEA; box-shadow: 0 4px 6px rgba(0,0,0,0.04);
-        margin-bottom: 20px;
-    }
-    
-    /* --- NEW: Modern Category Select Bar --- */
-    .category-bar {
+    /* --- NEW: Sidebar / Nav Pane Styling --- */
+    [data-testid="stSidebar"] {
+        padding-top: 2rem;
         background-color: #FFFFFF;
-        padding: 10px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.04);
-        margin-bottom: 2rem;
-        display: flex;
-        justify-content: center;
-        align-items: center;
     }
-    .category-bar .stButton>button {
+    [data-testid="stSidebar"] .stButton>button {
         background-color: transparent;
-        color: #555 !important;
-        border: none;
+        color: #333 !important;
+        border: 1px solid transparent;
+        padding: 10px 15px;
+        width: 100%;
+        text-align: left;
         font-weight: 600;
-        padding: 8px 16px;
+        margin-bottom: 5px;
     }
-    .category-bar .stButton>button:hover {
-        background-color: rgba(230, 92, 95, 0.1); /* Faint Red Glow */
-        color: #E65C5F !important;
+    [data-testid="stSidebar"] .stButton>button:hover {
+        background-color: #f0f0f5;
+        border: 1px solid #d0d0d5;
     }
-    .category-bar .stButton>button.active {
+    [data-testid="stSidebar"] .stButton>button.active {
         background-color: #E65C5F;
+        color: #FFFFFF !important;
+        border: 1px solid #D92B2F;
+    }
+    [data-testid="stSidebar"] .stButton>button.active div {
         color: #FFFFFF !important;
     }
 
-    /* (Other styles unchanged) */
+    /* (Other styles are unchanged) */
 </style>
 """, unsafe_allow_html=True)
 
-# --- (Engine classes and helper functions are unchanged) ---
+# --- (Engine classes and all other helper functions are unchanged from the last correct version) ---
 @st.cache_data
 def load_and_process_data(csv_path):
     try:
@@ -127,7 +119,7 @@ def load_and_process_data(csv_path):
     df[['PRISM Score', 'Potential', 'Missing Data']] = pd.DataFrame(scores.tolist(), index=df.index)
     return df
 
-def get_rating_stars(rating_text):
+def get_rating_stars(rating_text: str):
     if not isinstance(rating_text, str): return "N/A"
     match = re.search(r'(\d\.\d)', rating_text)
     if not match: return "N/A"
@@ -138,29 +130,25 @@ def get_rating_stars(rating_text):
     stars = "★" * full_stars + half_star + "☆" * empty_stars
     return f"{rating_num} {stars}"
 
-def clean_sales_text(sales_text):
+def clean_sales_text(sales_text: str):
     if not isinstance(sales_text, str): return "N/A"
     return sales_text.split(" ")[0]
 
-def generate_amazon_link(title):
+def generate_amazon_link(title: str):
     base_url = "https://www.amazon.in/s?k="
     search_query = urllib.parse.quote_plus(title)
     return f"{base_url}{search_query}"
 
-def generate_indiamart_link(item_name):
+def generate_indiamart_link(item_name: str):
     base_url = "https://dir.indiamart.com/search.mp?ss="
     search_query = urllib.parse.quote_plus(item_name)
     return f"{base_url}{search_query}"
 
 # --- Main App Execution ---
 def main():
-    st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
-    st.image("prism_logo_new.png")
-    st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
-    
-    # --- Modern Category Select Bar ---
-    with st.container():
-        st.markdown("<div class='category-bar'>", unsafe_allow_html=True)
+    # --- Sidebar for Category Selection ---
+    with st.sidebar:
+        st.subheader("Select a Category")
         
         categories = {
             "Car & Motorbike": "products_car_&_motorbike.csv",
@@ -172,28 +160,24 @@ def main():
         if 'selected_category' not in st.session_state:
             st.session_state.selected_category = "Sports, Fitness & Outdoors"
 
-        visible_categories = list(categories.keys())[:3]
-        hidden_categories = list(categories.keys())[3:]
-        
-        cols = st.columns(len(visible_categories) + (1 if hidden_categories else 0))
-        for i, category in enumerate(visible_categories):
+        for category in categories.keys():
             is_active = (st.session_state.selected_category == category)
-            if cols[i].button(category, use_container_width=True, key=category, type="primary" if is_active else "secondary"):
+            # Use markdown to inject a class for the active button
+            if is_active:
+                st.markdown(f'<style>div[data-testid="stButton-root"] > button[kind="secondary"]:nth-child(1) {{ background-color: #E65C5F; color: #FFFFFF !important; border: 1px solid #D92B2F; }}</style>', unsafe_allow_html=True)
+                st.markdown(f'<style>div[data-testid="stButton-root"] > button[kind="secondary"]:nth-child(1) div {{ color: #FFFFFF !important; }}</style>', unsafe_allow_html=True)
+
+            if st.button(category, use_container_width=True, key=category):
                 st.session_state.selected_category = category
+                # Reset pointer when category changes
                 st.session_state.product_pointer = 0
                 st.rerun()
 
-        if hidden_categories:
-            with cols[-1]:
-                more_selection = st.selectbox("More", [""] + hidden_categories, index=0, label_visibility="collapsed")
-                if more_selection:
-                    st.session_state.selected_category = more_selection
-                    st.session_state.product_pointer = 0
-                    st.rerun()
-        
-        st.markdown("</div>", unsafe_allow_html=True)
+    # --- Main Dashboard ---
+    st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
+    st.image("prism_logo_new.png")
+    st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
-    # --- (The rest of the app logic is unchanged) ---
     selected_category_name = st.session_state.selected_category
     file_name = categories[selected_category_name]
     df = load_and_process_data(file_name)
@@ -281,3 +265,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
