@@ -183,57 +183,69 @@ def main():
         st.image("prism_logo_new.png")
         st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
     
-    # --- Modern Category Select Bar ---
-    with st.container():
-        st.markdown("<div class='category-bar'>", unsafe_allow_html=True)
-        st.markdown("<p class='category-header'>Select Category</p>", unsafe_allow_html=True)
-        
-        categories = {
-            "Car & Motorbike": "products_car_&_motorbike.csv",
-            "Electronics": "products_electronics.csv",
-            "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
-            "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
-        }
-        
-        if 'selected_category' not in st.session_state:
-            st.session_state.selected_category = "Sports, Fitness & Outdoors"
 
-        selected_category_name = st.radio(
-            "Category Nav", 
-            options=list(categories.keys()), 
-            index=list(categories.keys()).index(st.session_state.selected_category),
-            horizontal=True, 
-            label_visibility="collapsed"
-        )
-        
-        if selected_category_name != st.session_state.selected_category:
-            st.session_state.selected_category = selected_category_name
-            st.session_state.product_pointer = 0
-            st.rerun()
+    # --- NEW: Main Layout with Custom Navigation Pane ---
+    nav_width = 2 if st.session_state.sidebar_state == 'expanded' else 1
+    main_width = 8
+    nav_pane, main_content = st.columns([nav_width, main_width], gap="large")
 
+    with nav_pane:
+        st.markdown("<div class='nav-pane'>", unsafe_allow_html=True)
+        if st.session_state.sidebar_state == 'expanded':
+            if st.button("◀ Collapse", use_container_width=True, key="collapse"):
+                st.session_state.sidebar_state = 'collapsed'
+                st.rerun()
+            
+            st.subheader("Categories")
+            categories = {
+                "Car & Motorbike": "products_car_&_motorbike.csv",
+                "Electronics": "products_electronics.csv",
+                "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
+                "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
+            }
+            for category in categories.keys():
+                is_active = (st.session_state.selected_category == category)
+                button_html = f"""
+                <style>
+                    div[data-testid="stHorizontalBlock"] .stButton button[kind="secondary"]:nth-child(1) {{
+                        background-color: {'#E65C5F' if is_active else '#F0F2F5'};
+                        color: {'#FFFFFF' if is_active else '#555'} !important;
+                    }}
+                </style>
+                """
+                st.markdown(button_html, unsafe_allow_html=True)
+                if st.button(category, use_container_width=True, key=category):
+                    st.session_state.selected_category = category
+                    st.session_state.product_pointer = 0
+                    st.rerun()
+        else: # Collapsed state
+            if st.button("▶", use_container_width=True, key="expand"):
+                st.session_state.sidebar_state = 'expanded'
+                st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
-    
-    selected_category_name = st.session_state.selected_category
-    file_name = categories[selected_category_name]
-    df = load_and_process_data(file_name)
-    
-    if df is None:
-        st.error(f"File not found: '{file_name}'. Please ensure your files are named correctly in your GitHub repository.")
-        st.stop()
 
-    if 'current_category' not in st.session_state or st.session_state.current_category != selected_category_name:
-        st.session_state.current_category = selected_category_name
-        indices = list(df.index)
-        random.shuffle(indices)
-        st.session_state.shuffled_indices = indices
-        st.session_state.product_pointer = 0
+    with main_content:
+        selected_category_name = st.session_state.selected_category
+        file_name = f"products_{selected_category_name.replace(', ', '_').replace(' & ', '_').lower()}.csv"
+        df = load_and_process_data(file_name)
+        
+        if df is None:
+            st.error(f"File not found: '{file_name}'. Please ensure it is in your GitHub repository.")
+            st.stop()
 
-    st.caption(f"Loaded {len(df)} products for {selected_category_name}.")
-    st.divider()
-    
-    current_shuffled_index = st.session_state.product_pointer
-    current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
-    current_product = df.iloc[current_product_index]
+        if 'current_category' not in st.session_state or st.session_state.current_category != selected_category_name:
+            st.session_state.current_category = selected_category_name
+            indices = list(df.index)
+            random.shuffle(indices)
+            st.session_state.shuffled_indices = indices
+            st.session_state.product_pointer = 0
+
+        st.caption(f"Loaded {len(df)} products for {selected_category_name}.")
+        st.divider()
+        
+        current_shuffled_index = st.session_state.product_pointer
+        current_product_index = st.session_state.shuffled_indices[current_shuffled_index]
+        current_product = df.iloc[current_product_index]
 
     col1, col2 = st.columns([2, 3], gap="large")
     with col1:
