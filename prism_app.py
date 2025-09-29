@@ -155,7 +155,7 @@ def main():
     }
     
     selected_category_name = st.selectbox(
-        "Select a Product Category",
+        "Product Category",
         options=list(categories.keys())
     )
     
