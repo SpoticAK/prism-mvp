@@ -8,6 +8,7 @@ import random
 import requests
 import cv2
 import numpy as np
+import os
 
 # --- Import Engines ---
 from item_identifier import ItemIdentifier
@@ -20,7 +21,7 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    /* Base Styles & Typography */
+    /* Base Styles */
     html, body, [class*="st-"] {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         background-color: #F0F2F6; 
@@ -39,7 +40,7 @@ st.markdown("""
         margin-bottom: 2rem; 
     }
     .logo-container img { 
-        max-width: 250px; 
+        max-width: 400px; 
         margin-bottom: 0.5rem; 
     }
     .logo-container p { 
@@ -67,6 +68,7 @@ st.markdown("""
     }
     .stButton>button div, .stLinkButton>a div {
         background-color: transparent;
+        color: #FFFFFF;
     }
     
     /* Main Content Card */
@@ -102,12 +104,7 @@ def load_and_process_data(csv_path):
     try:
         df = pd.read_csv(csv_path, dtype={'Monthly Sales': str})
     except FileNotFoundError: return None
-
-    # --- CRITICAL FIX: Remove commas from 'Price' before converting to number ---
-    if 'Price' in df.columns:
-        df['Price'] = pd.to_numeric(df['Price'].astype(str).str.replace(',', ''), errors='coerce')
-    
-    # --- The rest of the cleaning and processing logic is unchanged ---
+    df['Price'] = pd.to_numeric(df['Price'].astype(str).str.replace(',', ''), errors='coerce')
     df['Review'] = pd.to_numeric(df['Review'].astype(str).str.replace(',', ''), errors='coerce')
     df['Ratings_Num'] = df['Ratings'].str.extract(r'(\d\.\d)').astype(float)
     df['Cleaned Sales'] = df['Monthly Sales'].str.lower().str.replace('k', '000').str.extract(r'(\d+)').astype(float).fillna(0).astype(int)
@@ -147,28 +144,24 @@ def generate_indiamart_link(item_name):
 
 # --- Main App Execution ---
 def main():
-    st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
-    st.image("prism_logo_new.png")
-    st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
-    
-   # --- NEW: Modern Category Select Bar ---
     with st.container():
-        st.markdown("<div class='category-bar'>", unsafe_allow_html=True)
-        
-        categories = {
-            "Car & Motorbike": "products_car_&_motorbike.csv",
-            "Electronics": "products_electronics.csv",
-            "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
-            "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
-        }
-        
-        if 'selected_category' not in st.session_state:
-            st.session_state.selected_category = "Sports, Fitness & Outdoors"
-
-        # Display first 3 categories as buttons, the rest in a dropdown
-        visible_categories = list(categories.keys())[:3]
-        hidden_categories = list(categories.keys())[3:]
-        
+        st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
+        st.image("prism_logo_new.png")
+        st.markdown("<p>Product Research and Integrated Supply Module</p></div>", unsafe_allow_html=True)
+    
+    # --- Category Selection ---
+    categories = {
+        "Car & Motorbike": "products_car_&_motorbike.csv",
+        "Electronics": "products_electronics.csv",
+        "Sports, Fitness & Outdoors": "products_sports,_fitness_&_outdoors.csv",
+        "Tools & Home Improvement": "products_tools_&_home_improvement.csv"
+    }
+    
+    selected_category_name = st.selectbox(
+        "Select a Product Category",
+        options=list(categories.keys())
+    )
+    
     file_name = categories[selected_category_name]
     df = load_and_process_data(file_name)
     
@@ -198,7 +191,7 @@ def main():
         if nav_col1.button("← Previous Product", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer - 1 + len(df)) % len(df)
             st.rerun()
-        if nav_col2.button("Next Product →", use_container_width=True):
+        if nav_col2.button("Discover Next Product →", use_container_width=True):
             st.session_state.product_pointer = (st.session_state.product_pointer + 1) % len(df)
             st.rerun()
 
